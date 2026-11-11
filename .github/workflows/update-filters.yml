@@ -1,4 +1,4 @@
-name: Update adblock filters
+name: Update ad filters
 
 on:
   workflow_dispatch:
