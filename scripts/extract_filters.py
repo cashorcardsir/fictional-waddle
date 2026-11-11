@@ -26,7 +26,7 @@ def fetch_text(url):
         try:
             request = urllib.request.Request(
                 url,
-                headers={"User-Agent": "adblock-list-updater/1.0"},
+                headers={"User-Agent": "Mozilla/8.0"},
             )
             with urllib.request.urlopen(request, timeout=20) as response:
                 return response.read().decode("utf-8")
