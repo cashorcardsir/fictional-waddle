@@ -7,7 +7,8 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
 
-UQLOAD_URL = "https://uqload.vc/js2/x7qf3m2v.js"
+STREAM_URL = "https://thedaddy.li/stream/stream-51.php"
+SOURCE_URL = "https://uqload.vc/js2/x7qf3m2v.js"
 XOR_KEY = b"xR9tB2pL6q7MwVe"
 
 
@@ -20,50 +21,55 @@ def fetch_text(url):
         return response.read().decode("utf-8")
 
 
-domains = set()
-
-# Extract domains from Base64 arrays in the page saved as page.html.
-with open("page.html", encoding="utf-8") as file:
-    page_source = file.read()
-
-for variable in ("v", "c", "g", "z"):
-    match = re.search(
-        rf"\b{variable}\s*=\s*\[([^\]]*)\]",
-        page_source,
-    )
-    if not match:
-        continue
-
-    candidate_domains = set()
-    values = re.findall(r'"([A-Za-z0-9+/=]+)"', match.group(1))
-
-    for value in values:
-        try:
-            decoded = base64.b64decode(value, validate=True).decode("utf-8")
-        except (ValueError, UnicodeDecodeError):
+def extract_stream_domains(source):
+    # Check v, c, g, then z. Use the first array containing decodable
+    # Base64 values that produce hostnames.
+    for variable in ("v", "c", "g", "z"):
+        match = re.search(
+            rf"\b{variable}\s*=\s*\[([^\]]*)\]",
+            source,
+        )
+        if not match:
             continue
 
-        host = urlsplit("//" + decoded).hostname
-        if host:
-            candidate_domains.add(host.lower())
+        candidate_domains = set()
+        values = re.findall(r'"([A-Za-z0-9+/=]+)"', match.group(1))
 
-    # Use the first of v, c, g, z that contains usable Base64 domains.
-    if candidate_domains:
-        domains.update(candidate_domains)
-        break
+        for value in values:
+            try:
+                decoded = base64.b64decode(value, validate=True).decode("utf-8")
+            except (ValueError, UnicodeDecodeError):
+                continue
 
-# Fetch and decode the UQLoad configuration.
+            host = urlsplit("//" + decoded).hostname
+            if host:
+                candidate_domains.add(host.lower())
+
+        if candidate_domains:
+            return candidate_domains
+
+    raise ValueError("No usable Base64 hostnames found in v, c, g, or z")
+
+
+# Get domains from the stream page.
 try:
-    uqload_source = fetch_text(UQLOAD_URL)
+    stream_source = fetch_text(STREAM_URL)
+    targets = extract_stream_domains(stream_source)
 except Exception as error:
-    raise SystemExit(f"Could not fetch the UQLoad script: {error}")
+    raise SystemExit(f"Could not extract domains from the stream page: {error}")
+
+# Fetch the JavaScript and find window['randomizedName'] = 'encodedValue'.
+try:
+    js_source = fetch_text(SOURCE_URL)
+except Exception as error:
+    raise SystemExit(f"Could not fetch the JavaScript source: {error}")
 
 match = re.search(
     r"""window\s*\[\s*(['"])[^'"]+\1\s*\]\s*=\s*(['"])(.*?)\2""",
-    uqload_source,
+    js_source,
 )
 if not match:
-    raise SystemExit("Could not find the window[...] assignment in the UQLoad script")
+    raise SystemExit("Could not find the window[...] assignment")
 
 encoded = match.group(3)
 encoded += "=" * (-len(encoded) % 4)
@@ -71,7 +77,7 @@ encoded += "=" * (-len(encoded) % 4)
 try:
     ciphertext = base64.b64decode(encoded, validate=True)
 except ValueError as error:
-    raise SystemExit(f"The UQLoad value is not valid Base64: {error}")
+    raise SystemExit(f"The encoded value is not valid Base64: {error}")
 
 plaintext = bytes(
     byte ^ XOR_KEY[index % len(XOR_KEY)]
@@ -81,16 +87,15 @@ plaintext = bytes(
 try:
     config = json.loads(plaintext.decode("utf-8"))
 except (UnicodeDecodeError, json.JSONDecodeError) as error:
-    raise SystemExit(f"Could not decode the UQLoad value as JSON: {error}")
+    raise SystemExit(f"Could not decode the XOR value as JSON: {error}")
 
-# Add domains from the decoded configuration.
+# Add the domains from the decoded JSON.
 for field in ("adserverDomain", "decoyDomain", "cdnDomain"):
     value = config.get(field)
     if isinstance(value, str) and value.strip():
-        domains.add(value.strip().lower())
+        targets.add(value.strip().lower())
 
 # Add IP addresses from decoyDomainZones.
-targets = set(domains)
 zones = config.get("decoyDomainZones", {})
 if isinstance(zones, dict):
     for addresses in zones.values():
@@ -120,7 +125,7 @@ def check_target(target):
             with urllib.request.urlopen(request, timeout=5):
                 return target
         except urllib.error.HTTPError:
-            # Any HTTP response, including 403 or 404, counts as responsive.
+            # An HTTP response, including 403 or 404, means it responded.
             return target
         except Exception:
             continue
