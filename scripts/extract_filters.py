@@ -9,7 +9,14 @@ from urllib.parse import urlsplit
 
 STREAM_URL = "https://dlhd.st/stream/stream-51.php"
 SOURCE_URL = "https://uqload.vc/js2/x7qf3m2v.js"
+BLOCKLIST_URL = "https://codeberg.org/jcoscia/evasive-ads-blocklist/raw/branch/main/adcash.txt"
 XOR_KEY = b"xR9tB2pL6q7MwVe"
+
+DOMAIN_PATTERN = re.compile(
+    r"(?=.{1,253}$)"
+    r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)"
+    r"(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*"
+)
 
 
 def fetch_text(url):
@@ -29,8 +36,10 @@ def extract_stream_domains(source):
         r"\b[A-Za-z_$][\w$]*\s*=\s*\[([^\]]*)\]",
         source,
     ):
-        array_contents = match.group(1)
-        values = re.findall(r"""["']([A-Za-z0-9+/=]+)["']""", array_contents)
+        values = re.findall(
+            r"""["']([A-Za-z0-9+/=]+)["']""",
+            match.group(1),
+        )
 
         for value in values:
             try:
@@ -48,14 +57,31 @@ def extract_stream_domains(source):
     return domains
 
 
-# Extract Base64-encoded hostnames from the stream page.
+def extract_blocklist_domains(text):
+    domains = set()
+
+    for line in text.splitlines():
+        entry = line.strip()
+        if not entry or entry.startswith("#"):
+            continue
+
+        # Accept plain domains and common adblock-style domain entries.
+        entry = entry.removeprefix("||").removesuffix("^").strip("/")
+        if DOMAIN_PATTERN.fullmatch(entry):
+            domains.add(entry.lower())
+
+    return domains
+
+
+targets = set()
+
+# Add domains from the stream page.
 try:
-    stream_source = fetch_text(STREAM_URL)
-    targets = extract_stream_domains(stream_source)
+    targets.update(extract_stream_domains(fetch_text(STREAM_URL)))
 except Exception as error:
     raise SystemExit(f"Could not extract domains from the stream page: {error}")
 
-# Fetch the JavaScript and find window['randomizedName'] = 'encodedValue'.
+# Add domains and IPs from the XOR-decoded JSON.
 try:
     js_source = fetch_text(SOURCE_URL)
 except Exception as error:
@@ -86,13 +112,11 @@ try:
 except (UnicodeDecodeError, json.JSONDecodeError) as error:
     raise SystemExit(f"Could not decode the XOR value as JSON: {error}")
 
-# Add domains from the decoded JSON.
 for field in ("adserverDomain", "decoyDomain", "cdnDomain"):
     value = config.get(field)
     if isinstance(value, str) and value.strip():
         targets.add(value.strip().lower())
 
-# Add IP addresses from decoyDomainZones.
 zones = config.get("decoyDomainZones", {})
 if isinstance(zones, dict):
     for addresses in zones.values():
@@ -103,6 +127,12 @@ if isinstance(zones, dict):
                         targets.add(str(ipaddress.ip_address(address.strip())))
                     except ValueError:
                         pass
+
+# Add domains from the Codeberg blocklist.
+try:
+    targets.update(extract_blocklist_domains(fetch_text(BLOCKLIST_URL)))
+except Exception as error:
+    raise SystemExit(f"Could not fetch or parse the Codeberg blocklist: {error}")
 
 
 def check_target(target):
@@ -116,7 +146,7 @@ def check_target(target):
         request = urllib.request.Request(
             f"{scheme}://{target}/",
             method="HEAD",
-            headers={"User-Agent": "adblock-list-check/1.0"},
+            headers={"User-Agent": "Mozilla/8.0"},
         )
 
         try:
@@ -131,7 +161,7 @@ def check_target(target):
     return None
 
 
-# Check targets concurrently and keep only those that respond.
+# Deduplicated targets are checked concurrently.
 with ThreadPoolExecutor(max_workers=20) as executor:
     results = executor.map(check_target, targets)
     active_targets = {target for target in results if target is not None}
