@@ -5,8 +5,9 @@ import re
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlsplit
 
-SOURCE_URL = "https://uqload.vc/js2/x7qf3m2v.js"
+UQLOAD_URL = "https://uqload.vc/js2/x7qf3m2v.js"
 XOR_KEY = b"xR9tB2pL6q7MwVe"
 
 
@@ -19,26 +20,59 @@ def fetch_text(url):
         return response.read().decode("utf-8")
 
 
-# Find window['randomizedName'] = 'encodedValue'.
-source = fetch_text(SOURCE_URL)
+domains = set()
+
+# Extract domains from Base64 arrays in the page saved as page.html.
+with open("page.html", encoding="utf-8") as file:
+    page_source = file.read()
+
+for variable in ("v", "c", "g", "z"):
+    match = re.search(
+        rf"\b{variable}\s*=\s*\[([^\]]*)\]",
+        page_source,
+    )
+    if not match:
+        continue
+
+    candidate_domains = set()
+    values = re.findall(r'"([A-Za-z0-9+/=]+)"', match.group(1))
+
+    for value in values:
+        try:
+            decoded = base64.b64decode(value, validate=True).decode("utf-8")
+        except (ValueError, UnicodeDecodeError):
+            continue
+
+        host = urlsplit("//" + decoded).hostname
+        if host:
+            candidate_domains.add(host.lower())
+
+    # Use the first of v, c, g, z that contains usable Base64 domains.
+    if candidate_domains:
+        domains.update(candidate_domains)
+        break
+
+# Fetch and decode the UQLoad configuration.
+try:
+    uqload_source = fetch_text(UQLOAD_URL)
+except Exception as error:
+    raise SystemExit(f"Could not fetch the UQLoad script: {error}")
+
 match = re.search(
     r"""window\s*\[\s*(['"])[^'"]+\1\s*\]\s*=\s*(['"])(.*?)\2""",
-    source,
+    uqload_source,
 )
-
 if not match:
-    raise SystemExit("Could not find the window[...] assignment")
+    raise SystemExit("Could not find the window[...] assignment in the UQLoad script")
 
 encoded = match.group(3)
-
-# Decode Base64, allowing omitted padding.
 encoded += "=" * (-len(encoded) % 4)
+
 try:
     ciphertext = base64.b64decode(encoded, validate=True)
 except ValueError as error:
-    raise SystemExit(f"The encoded value is not valid Base64: {error}")
+    raise SystemExit(f"The UQLoad value is not valid Base64: {error}")
 
-# XOR-decode using the repeating key.
 plaintext = bytes(
     byte ^ XOR_KEY[index % len(XOR_KEY)]
     for index, byte in enumerate(ciphertext)
@@ -47,16 +81,16 @@ plaintext = bytes(
 try:
     config = json.loads(plaintext.decode("utf-8"))
 except (UnicodeDecodeError, json.JSONDecodeError) as error:
-    raise SystemExit(f"Could not decode the XOR value as JSON: {error}")
+    raise SystemExit(f"Could not decode the UQLoad value as JSON: {error}")
 
-# Collect the domain fields.
-targets = set()
+# Add domains from the decoded configuration.
 for field in ("adserverDomain", "decoyDomain", "cdnDomain"):
     value = config.get(field)
     if isinstance(value, str) and value.strip():
-        targets.add(value.strip().lower())
+        domains.add(value.strip().lower())
 
-# Collect IP addresses from decoyDomainZones.
+# Add IP addresses from decoyDomainZones.
+targets = set(domains)
 zones = config.get("decoyDomainZones", {})
 if isinstance(zones, dict):
     for addresses in zones.values():
@@ -68,12 +102,8 @@ if isinstance(zones, dict):
                     except ValueError:
                         pass
 
-if not targets:
-    raise SystemExit("No domains or IP addresses were found in the decoded JSON")
-
 
 def check_target(target):
-    # Use HTTP for IPs; HTTPS then HTTP for hostnames.
     try:
         ipaddress.ip_address(target)
         schemes = ("http",)
@@ -90,7 +120,7 @@ def check_target(target):
             with urllib.request.urlopen(request, timeout=5):
                 return target
         except urllib.error.HTTPError:
-            # An HTTP response, including 403 or 404, means it responded.
+            # Any HTTP response, including 403 or 404, counts as responsive.
             return target
         except Exception:
             continue
