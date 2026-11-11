@@ -5,9 +5,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
 
-BLOCKLIST_URL = (
-    "https://codeberg.org/jcoscia/evasive-ads-blocklist/raw/branch/main/adcash.txt"
-)
+BLOCKLIST_URL = "https://codeberg.org/jcoscia/evasive-ads-blocklist/raw/branch/main/adcash.txt"
 
 def fetch_text(url):
     request = urllib.request.Request(
@@ -17,27 +15,41 @@ def fetch_text(url):
     with urllib.request.urlopen(request, timeout=20) as response:
         return response.read().decode("utf-8")
 
-# Extract Base64 values from the page's v array.
+# Read the page source that the workflow downloaded to page.html.
 with open("page.html", encoding="utf-8") as file:
     page_source = file.read()
 
-match = re.search(r"\bv\s*=\s*\[([^\]]*)\]", page_source)
-if not match:
-    raise SystemExit("Could not find the v array in page.html")
-
+# Check v, c, g, then z. Use the first variable with Base64 values
+# that decode to usable hostnames.
 domains = set()
 
-for value in re.findall(r'"([A-Za-z0-9+/=]+)"', match.group(1)):
-    try:
-        decoded = base64.b64decode(value, validate=True).decode("utf-8")
-    except (ValueError, UnicodeDecodeError) as error:
-        raise SystemExit(f"Could not decode a v value: {error}")
+for variable in ("v", "c", "g", "z"):
+    match = re.search(
+        rf"\b{variable}\s*=\s*\[([^\]]*)\]",
+        page_source,
+    )
+    if not match:
+        continue
 
-    host = urlsplit("//" + decoded).hostname
-    if not host:
-        raise SystemExit(f"Could not extract a hostname from {decoded!r}")
+    candidate_domains = set()
+    values = re.findall(r'"([A-Za-z0-9+/=]+)"', match.group(1))
 
-    domains.add(host.lower())
+    for value in values:
+        try:
+            decoded = base64.b64decode(value, validate=True).decode("utf-8")
+        except (ValueError, UnicodeDecodeError):
+            continue
+
+        host = urlsplit("//" + decoded).hostname
+        if host:
+            candidate_domains.add(host.lower())
+
+    if candidate_domains:
+        domains = candidate_domains
+        break
+
+if not domains:
+    raise SystemExit("Could not find Base64 values with usable hostnames in v, c, g, or z")
 
 # Add domains from the additional line-by-line blocklist.
 try:
@@ -65,13 +77,14 @@ def check_domain(domain):
     request = urllib.request.Request(
         f"https://{domain}/",
         method="HEAD",
-        headers={"User-Agent": "Mozilla/8.0"},
+        headers={"User-Agent": "adblock-list-check/1.0"},
     )
 
     try:
         with urllib.request.urlopen(request, timeout=5):
             return domain
     except urllib.error.HTTPError:
+        # An HTTP response, including 403 or 404, means the server responded.
         return domain
     except Exception:
         return None
