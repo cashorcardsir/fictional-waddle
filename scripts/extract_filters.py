@@ -65,7 +65,7 @@ def check_domain(domain):
     request = urllib.request.Request(
         f"https://{domain}/",
         method="HEAD",
-        headers={"User-Agent": "adblock-list-check/1.0"},
+        headers={"User-Agent": "Mozilla/8.0"},
     )
 
     try:
