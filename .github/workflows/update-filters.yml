@@ -3,7 +3,7 @@ name: Update adblock filters
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/6 * * * *"
 
 permissions:
   contents: write
