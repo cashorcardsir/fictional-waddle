@@ -1,4 +1,4 @@
-import ast
+import base64
 import ipaddress
 import json
 import re
@@ -7,7 +7,8 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 SOURCE_URL = "https://uqload.vc/js2/x7qf3m2v.js"
-XOR_KEY = "xR9tB2pL6q7MwVe"
+XOR_KEY = b"xR9tB2pL6q7MwVe"
+
 
 def fetch_text(url):
     request = urllib.request.Request(
@@ -17,72 +18,69 @@ def fetch_text(url):
     with urllib.request.urlopen(request, timeout=20) as response:
         return response.read().decode("utf-8")
 
-# Fetch JavaScript as text; never execute it.
+
+# Find window['randomizedName'] = 'encodedValue'.
 source = fetch_text(SOURCE_URL)
-
-# Find window['randomizedName'] = 'encoded string';
 match = re.search(
-    r"""window\s*\[\s*(['"])[^'"]+\1\s*\]\s*=\s*(['"])(.*?)\2\s*;""",
+    r"""window\s*\[\s*(['"])[^'"]+\1\s*\]\s*=\s*(['"])(.*?)\2""",
     source,
-    re.DOTALL,
 )
+
 if not match:
-    raise SystemExit("Could not find the window[...] string assignment")
+    raise SystemExit("Could not find the window[...] assignment")
 
-quote, encoded_literal = match.group(2), match.group(3)
+encoded = match.group(3)
+
+# Decode Base64, allowing omitted padding.
+encoded += "=" * (-len(encoded) % 4)
+try:
+    ciphertext = base64.b64decode(encoded, validate=True)
+except ValueError as error:
+    raise SystemExit(f"The encoded value is not valid Base64: {error}")
+
+# XOR-decode using the repeating key.
+plaintext = bytes(
+    byte ^ XOR_KEY[index % len(XOR_KEY)]
+    for index, byte in enumerate(ciphertext)
+)
 
 try:
-    encoded_text = ast.literal_eval(quote + encoded_literal + quote)
-except (SyntaxError, ValueError) as error:
-    raise SystemExit(f"Could not parse the assigned string: {error}")
+    config = json.loads(plaintext.decode("utf-8"))
+except (UnicodeDecodeError, json.JSONDecodeError) as error:
+    raise SystemExit(f"Could not decode the XOR value as JSON: {error}")
 
-try:
-    encoded_bytes = encoded_text.encode("latin-1")
-    key_bytes = XOR_KEY.encode("ascii")
-    decoded_bytes = bytes(
-        byte ^ key_bytes[index % len(key_bytes)]
-        for index, byte in enumerate(encoded_bytes)
-    )
-    config = json.loads(decoded_bytes.decode("utf-8"))
-except (UnicodeError, ValueError, json.JSONDecodeError) as error:
-    raise SystemExit(f"Could not XOR-decode and parse the configuration: {error}")
+# Collect the domain fields.
+targets = set()
+for field in ("adserverDomain", "decoyDomain", "cdnDomain"):
+    value = config.get(field)
+    if isinstance(value, str) and value.strip():
+        targets.add(value.strip().lower())
 
-domains = set()
-ips = set()
-
-# Collect string values whose field names identify them as domains.
-def collect_domains(value):
-    if isinstance(value, dict):
-        for key, child in value.items():
-            if "domain" in key.lower() and isinstance(child, str):
-                candidate = child.strip().lower().rstrip(".")
-                if candidate:
-                    domains.add(candidate)
-            collect_domains(child)
-    elif isinstance(value, list):
-        for child in value:
-            collect_domains(child)
-
-collect_domains(config)
-
-# Collect IP addresses specifically from decoyDomainZones.
+# Collect IP addresses from decoyDomainZones.
 zones = config.get("decoyDomainZones", {})
 if isinstance(zones, dict):
     for addresses in zones.values():
         if isinstance(addresses, list):
             for address in addresses:
-                try:
-                    ips.add(str(ipaddress.ip_address(address)))
-                except ValueError:
-                    continue
+                if isinstance(address, str):
+                    try:
+                        targets.add(str(ipaddress.ip_address(address.strip())))
+                    except ValueError:
+                        pass
 
-targets = domains | ips
 if not targets:
-    raise SystemExit("No domains or IP addresses were found")
+    raise SystemExit("No domains or IP addresses were found in the decoded JSON")
+
 
 def check_target(target):
-    # Try HTTPS and then HTTP. Any HTTP response counts as responsive.
-    for scheme in ("https", "http"):
+    # Use HTTP for IPs; HTTPS then HTTP for hostnames.
+    try:
+        ipaddress.ip_address(target)
+        schemes = ("http",)
+    except ValueError:
+        schemes = ("https", "http")
+
+    for scheme in schemes:
         request = urllib.request.Request(
             f"{scheme}://{target}/",
             method="HEAD",
@@ -92,10 +90,13 @@ def check_target(target):
             with urllib.request.urlopen(request, timeout=5):
                 return target
         except urllib.error.HTTPError:
+            # An HTTP response, including 403 or 404, means it responded.
             return target
         except Exception:
-            pass
+            continue
+
     return None
+
 
 with ThreadPoolExecutor(max_workers=20) as executor:
     results = executor.map(check_target, targets)
