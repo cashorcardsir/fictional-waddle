@@ -5,17 +5,30 @@ import urllib.error
 import urllib.request
 from urllib.parse import urlsplit
 
-with open("page.html", encoding="utf-8") as file:
-    source = file.read()
+BLOCKLIST_URL = (
+    "https://codeberg.org/jcoscia/evasive-ads-blocklist/"
+    "raw/branch/main/adcash.txt"
+)
 
-match = re.search(r"\bv\s*=\s*\[([^\]]*)\]", source)
+def fetch_text(url):
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "adblock-list-updater/1.0"},
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        return response.read().decode("utf-8")
+
+# Extract domains from the downloaded page.
+with open("page.html", encoding="utf-8") as file:
+    page_source = file.read()
+
+match = re.search(r"\bv\s*=\s*\[([^\]]*)\]", page_source)
 if not match:
     raise SystemExit("Could not find the v array in page.html")
 
-encoded_values = re.findall(r'"([A-Za-z0-9+/=]+)"', match.group(1))
-
 domains = set()
-for value in encoded_values:
+
+for value in re.findall(r'"([A-Za-z0-9+/=]+)"', match.group(1)):
     try:
         decoded = base64.b64decode(value, validate=True).decode("utf-8")
     except (ValueError, UnicodeDecodeError) as error:
@@ -24,9 +37,25 @@ for value in encoded_values:
     host = urlsplit("//" + decoded).hostname
     if not host:
         raise SystemExit(f"Could not extract a hostname from {decoded!r}")
-
     domains.add(host.lower())
 
+# Add domains from the extra line-by-line blocklist.
+try:
+    blocklist = fetch_text(BLOCKLIST_URL)
+except Exception as error:
+    raise SystemExit(f"Could not fetch the additional blocklist: {error}")
+
+for line in blocklist.splitlines():
+    entry = line.strip()
+    if not entry or entry.startswith("#"):
+        continue
+
+    # Accept plain domain entries, ignoring any trailing slash.
+    entry = entry.removeprefix("||").removesuffix("^").strip("/")
+    if re.fullmatch(r"(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*", entry):
+        domains.add(entry.lower())
+
+# Keep only domains that respond over HTTPS.
 active_domains = set()
 
 for domain in domains:
@@ -42,7 +71,7 @@ for domain in domains:
                 active_domains.add(domain)
             break
         except urllib.error.HTTPError:
-            # Any HTTP response, including 403 or 404, means the server responded.
+            # An HTTP response, including 403 or 404, means the server responded.
             active_domains.add(domain)
             break
         except Exception:
