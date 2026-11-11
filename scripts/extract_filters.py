@@ -7,7 +7,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
 
-STREAM_URL = "https://thedaddy.li/stream/stream-51.php"
+STREAM_URL = "https://dlhd.st/stream/stream-51.php"
 SOURCE_URL = "https://uqload.vc/js2/x7qf3m2v.js"
 XOR_KEY = b"xR9tB2pL6q7MwVe"
 
@@ -22,18 +22,15 @@ def fetch_text(url):
 
 
 def extract_stream_domains(source):
-    # Check v, c, g, then z. Use the first array containing decodable
-    # Base64 values that produce hostnames.
-    for variable in ("v", "c", "g", "z"):
-        match = re.search(
-            rf"\b{variable}\s*=\s*\[([^\]]*)\]",
-            source,
-        )
-        if not match:
-            continue
+    domains = set()
 
-        candidate_domains = set()
-        values = re.findall(r'"([A-Za-z0-9+/=]+)"', match.group(1))
+    # Scan array assignments regardless of their variable names.
+    for match in re.finditer(
+        r"\b[A-Za-z_$][\w$]*\s*=\s*\[([^\]]*)\]",
+        source,
+    ):
+        array_contents = match.group(1)
+        values = re.findall(r"""["']([A-Za-z0-9+/=]+)["']""", array_contents)
 
         for value in values:
             try:
@@ -43,15 +40,15 @@ def extract_stream_domains(source):
 
             host = urlsplit("//" + decoded).hostname
             if host:
-                candidate_domains.add(host.lower())
+                domains.add(host.lower())
 
-        if candidate_domains:
-            return candidate_domains
+    if not domains:
+        raise ValueError("No Base64-encoded hostnames found in array variables")
 
-    raise ValueError("No usable Base64 hostnames found in v, c, g, or z")
+    return domains
 
 
-# Get domains from the stream page.
+# Extract Base64-encoded hostnames from the stream page.
 try:
     stream_source = fetch_text(STREAM_URL)
     targets = extract_stream_domains(stream_source)
@@ -89,7 +86,7 @@ try:
 except (UnicodeDecodeError, json.JSONDecodeError) as error:
     raise SystemExit(f"Could not decode the XOR value as JSON: {error}")
 
-# Add the domains from the decoded JSON.
+# Add domains from the decoded JSON.
 for field in ("adserverDomain", "decoyDomain", "cdnDomain"):
     value = config.get(field)
     if isinstance(value, str) and value.strip():
@@ -121,6 +118,7 @@ def check_target(target):
             method="HEAD",
             headers={"User-Agent": "adblock-list-check/1.0"},
         )
+
         try:
             with urllib.request.urlopen(request, timeout=5):
                 return target
@@ -133,6 +131,7 @@ def check_target(target):
     return None
 
 
+# Check targets concurrently and keep only those that respond.
 with ThreadPoolExecutor(max_workers=20) as executor:
     results = executor.map(check_target, targets)
     active_targets = {target for target in results if target is not None}
