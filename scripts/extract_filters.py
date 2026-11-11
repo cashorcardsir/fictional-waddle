@@ -2,12 +2,13 @@ import base64
 import ipaddress
 import json
 import re
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
 
-STREAM_URL = "https://dlhd.st/stream/stream-51.php"
+STREAM_URL = "https://thedaddy.li/stream/stream-51.php"
 SOURCE_URL = "https://uqload.vc/js2/x7qf3m2v.js"
 BLOCKLIST_URL = "https://codeberg.org/jcoscia/evasive-ads-blocklist/raw/branch/main/adcash.txt"
 XOR_KEY = b"xR9tB2pL6q7MwVe"
@@ -20,18 +21,26 @@ DOMAIN_PATTERN = re.compile(
 
 
 def fetch_text(url):
-    request = urllib.request.Request(
-        url,
-        headers={"User-Agent": "adblock-list-updater/1.0"},
-    )
-    with urllib.request.urlopen(request, timeout=20) as response:
-        return response.read().decode("utf-8")
+    """Fetch a URL; retry once after 45 seconds, then skip it."""
+    for attempt in range(2):
+        try:
+            request = urllib.request.Request(
+                url,
+                headers={"User-Agent": "adblock-list-updater/1.0"},
+            )
+            with urllib.request.urlopen(request, timeout=20) as response:
+                return response.read().decode("utf-8")
+        except Exception:
+            if attempt == 0:
+                time.sleep(45)
+
+    return None
 
 
 def extract_stream_domains(source):
     domains = set()
 
-    # Scan array assignments regardless of their variable names.
+    # Scan array assignments, regardless of variable name.
     for match in re.finditer(
         r"\b[A-Za-z_$][\w$]*\s*=\s*\[([^\]]*)\]",
         source,
@@ -50,9 +59,6 @@ def extract_stream_domains(source):
             host = urlsplit("//" + decoded).hostname
             if host:
                 domains.add(host.lower())
-
-    if not domains:
-        raise ValueError("No Base64-encoded hostnames found in array variables")
 
     return domains
 
@@ -75,78 +81,79 @@ def extract_blocklist_domains(text):
 
 targets = set()
 
-# Add domains from the stream page.
-try:
-    targets.update(extract_stream_domains(fetch_text(STREAM_URL)))
-except Exception as error:
-    raise SystemExit(f"Could not extract domains from the stream page: {error}")
+# Get Base64-encoded hostnames from the stream page.
+stream_source = fetch_text(STREAM_URL)
+if stream_source:
+    try:
+        targets.update(extract_stream_domains(stream_source))
+    except Exception:
+        pass
 
-# Add domains and IPs from the XOR-decoded JSON.
-try:
-    js_source = fetch_text(SOURCE_URL)
-except Exception as error:
-    raise SystemExit(f"Could not fetch the JavaScript source: {error}")
+# Get domains and IPs from the XOR-encoded JavaScript value.
+js_source = fetch_text(SOURCE_URL)
+if js_source:
+    match = re.search(
+        r"""window\s*\[\s*(['"])[^'"]+\1\s*\]\s*=\s*(['"])(.*?)\2""",
+        js_source,
+    )
 
-match = re.search(
-    r"""window\s*\[\s*(['"])[^'"]+\1\s*\]\s*=\s*(['"])(.*?)\2""",
-    js_source,
-)
-if not match:
-    raise SystemExit("Could not find the window[...] assignment")
+    if match:
+        encoded = match.group(3)
+        encoded += "=" * (-len(encoded) % 4)
 
-encoded = match.group(3)
-encoded += "=" * (-len(encoded) % 4)
+        try:
+            ciphertext = base64.b64decode(encoded, validate=True)
+            plaintext = bytes(
+                byte ^ XOR_KEY[index % len(XOR_KEY)]
+                for index, byte in enumerate(ciphertext)
+            )
+            config = json.loads(plaintext.decode("utf-8"))
 
-try:
-    ciphertext = base64.b64decode(encoded, validate=True)
-except ValueError as error:
-    raise SystemExit(f"The encoded value is not valid Base64: {error}")
+            for field in ("adserverDomain", "decoyDomain", "cdnDomain"):
+                value = config.get(field)
+                if isinstance(value, str) and value.strip():
+                    targets.add(value.strip().lower())
 
-plaintext = bytes(
-    byte ^ XOR_KEY[index % len(XOR_KEY)]
-    for index, byte in enumerate(ciphertext)
-)
+            zones = config.get("decoyDomainZones", {})
+            if isinstance(zones, dict):
+                for addresses in zones.values():
+                    if isinstance(addresses, list):
+                        for address in addresses:
+                            if isinstance(address, str):
+                                try:
+                                    targets.add(
+                                        str(ipaddress.ip_address(address.strip()))
+                                    )
+                                except ValueError:
+                                    pass
 
-try:
-    config = json.loads(plaintext.decode("utf-8"))
-except (UnicodeDecodeError, json.JSONDecodeError) as error:
-    raise SystemExit(f"Could not decode the XOR value as JSON: {error}")
-
-for field in ("adserverDomain", "decoyDomain", "cdnDomain"):
-    value = config.get(field)
-    if isinstance(value, str) and value.strip():
-        targets.add(value.strip().lower())
-
-zones = config.get("decoyDomainZones", {})
-if isinstance(zones, dict):
-    for addresses in zones.values():
-        if isinstance(addresses, list):
-            for address in addresses:
-                if isinstance(address, str):
-                    try:
-                        targets.add(str(ipaddress.ip_address(address.strip())))
-                    except ValueError:
-                        pass
+        except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
+            pass
 
 # Add domains from the Codeberg blocklist.
-try:
-    targets.update(extract_blocklist_domains(fetch_text(BLOCKLIST_URL)))
-except Exception as error:
-    raise SystemExit(f"Could not fetch or parse the Codeberg blocklist: {error}")
+blocklist_text = fetch_text(BLOCKLIST_URL)
+if blocklist_text:
+    targets.update(extract_blocklist_domains(blocklist_text))
+
+# Avoid replacing the existing file with an empty list if every source failed.
+if not targets:
+    raise SystemExit("No targets were fetched; leaving filters.txt unchanged")
 
 
 def check_target(target):
     try:
-        ipaddress.ip_address(target)
+        ip = ipaddress.ip_address(target)
+        host_for_url = f"[{target}]" if ip.version == 6 else target
         schemes = ("http",)
     except ValueError:
+        host_for_url = target
         schemes = ("https", "http")
 
     for scheme in schemes:
         request = urllib.request.Request(
-            f"{scheme}://{target}/",
+            f"{scheme}://{host_for_url}/",
             method="HEAD",
-            headers={"User-Agent": "Mozilla/8.0"},
+            headers={"User-Agent": "adblock-list-check/1.0"},
         )
 
         try:
@@ -161,7 +168,7 @@ def check_target(target):
     return None
 
 
-# Deduplicated targets are checked concurrently.
+# Check deduplicated targets concurrently; only responsive ones are written.
 with ThreadPoolExecutor(max_workers=20) as executor:
     results = executor.map(check_target, targets)
     active_targets = {target for target in results if target is not None}
