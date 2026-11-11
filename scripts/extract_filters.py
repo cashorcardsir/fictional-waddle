@@ -1,13 +1,12 @@
 import base64
 import re
-import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
 
 BLOCKLIST_URL = (
-    "https://codeberg.org/jcoscia/evasive-ads-blocklist/"
-    "raw/branch/main/adcash.txt"
+    "https://codeberg.org/jcoscia/evasive-ads-blocklist/raw/branch/main/adcash.txt"
 )
 
 def fetch_text(url):
@@ -18,7 +17,7 @@ def fetch_text(url):
     with urllib.request.urlopen(request, timeout=20) as response:
         return response.read().decode("utf-8")
 
-# Extract domains from the downloaded page.
+# Extract Base64 values from the page's v array.
 with open("page.html", encoding="utf-8") as file:
     page_source = file.read()
 
@@ -37,46 +36,49 @@ for value in re.findall(r'"([A-Za-z0-9+/=]+)"', match.group(1)):
     host = urlsplit("//" + decoded).hostname
     if not host:
         raise SystemExit(f"Could not extract a hostname from {decoded!r}")
+
     domains.add(host.lower())
 
-# Add domains from the extra line-by-line blocklist.
+# Add domains from the additional line-by-line blocklist.
 try:
     blocklist = fetch_text(BLOCKLIST_URL)
 except Exception as error:
     raise SystemExit(f"Could not fetch the additional blocklist: {error}")
+
+domain_pattern = re.compile(
+    r"(?=.{1,253}$)"
+    r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)"
+    r"(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*"
+)
 
 for line in blocklist.splitlines():
     entry = line.strip()
     if not entry or entry.startswith("#"):
         continue
 
-    # Accept plain domain entries, ignoring any trailing slash.
     entry = entry.removeprefix("||").removesuffix("^").strip("/")
-    if re.fullmatch(r"(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*", entry):
+    if domain_pattern.fullmatch(entry):
         domains.add(entry.lower())
 
-# Keep only domains that respond over HTTPS.
-active_domains = set()
-
-for domain in domains:
+# Check domains concurrently. Any HTTP response counts as responsive.
+def check_domain(domain):
     request = urllib.request.Request(
         f"https://{domain}/",
         method="HEAD",
-        headers={"User-Agent": "curl"},
+        headers={"User-Agent": "adblock-list-check/1.0"},
     )
 
-    for attempt in range(2):
-        try:
-            with urllib.request.urlopen(request, timeout=8):
-                active_domains.add(domain)
-            break
-        except urllib.error.HTTPError:
-            # An HTTP response, including 403 or 404, means the server responded.
-            active_domains.add(domain)
-            break
-        except Exception:
-            if attempt == 0:
-                time.sleep(1)
+    try:
+        with urllib.request.urlopen(request, timeout=5):
+            return domain
+    except urllib.error.HTTPError:
+        return domain
+    except Exception:
+        return None
+
+with ThreadPoolExecutor(max_workers=20) as executor:
+    results = executor.map(check_domain, domains)
+    active_domains = {domain for domain in results if domain is not None}
 
 with open("filters.txt", "w", encoding="utf-8") as output:
     for domain in sorted(active_domains):
