@@ -157,6 +157,9 @@ blocklist_text = fetch_text(BLOCKLIST_URL)
 if blocklist_text:
     targets.update(extract_blocklist_domains(blocklist_text))
 
+# Normalize and deduplicate entries, removing a leading www. subdomain.
+targets = {target.lower().removeprefix("www.") for target in targets}
+
 # Avoid replacing the existing file if there are no targets to check.
 if not targets:
     raise SystemExit("No targets were fetched; leaving filters.txt unchanged")
