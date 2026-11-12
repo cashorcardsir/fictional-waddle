@@ -8,7 +8,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
 
-STREAM_URL = "https://thedaddy.li/stream/stream-51.php"
+STREAM_URL = "https://dlhd.st/stream/stream-51.php"
 SOURCE_URL = "https://uqload.vc/js2/x7qf3m2v.js"
 BLOCKLIST_URL = "https://codeberg.org/jcoscia/evasive-ads-blocklist/raw/branch/main/adcash.txt"
 XOR_KEY = b"xR9tB2pL6q7MwVe"
@@ -153,7 +153,7 @@ def check_target(target):
         request = urllib.request.Request(
             f"{scheme}://{host_for_url}/",
             method="HEAD",
-            headers={"User-Agent": "adblock-list-check/1.0"},
+            headers={"User-Agent": "Mozilla/8.0"},
         )
 
         try:
