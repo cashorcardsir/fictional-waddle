@@ -2,9 +2,9 @@ name: Update ad filters
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '3,13,23,33,43,53 * * * *' 
-      timezone: 'Asia/Kolkata'
+#  schedule:
+#    - cron: '3,13,23,33,43,53 * * * *' 
+#      timezone: 'Asia/Kolkata'
 
 permissions:
   contents: write
