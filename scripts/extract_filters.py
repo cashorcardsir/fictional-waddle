@@ -12,6 +12,7 @@ STREAM_URL = "https://dlhd.st/stream/stream-51.php"
 SOURCE_URL = "https://uqload.vc/js2/x7qf3m2v.js"
 BLOCKLIST_URL = "https://codeberg.org/jcoscia/evasive-ads-blocklist/raw/branch/main/adcash.txt"
 XOR_KEY = b"xR9tB2pL6q7MwVe"
+FILTERS_FILE = "filters.txt"
 
 DOMAIN_PATTERN = re.compile(
     r"(?=.{1,253}$)"
@@ -35,6 +36,26 @@ def fetch_text(url):
                 time.sleep(45)
 
     return None
+
+
+def load_existing_targets(path):
+    """Read previously written domains/IPs so they can be checked again."""
+    targets = set()
+
+    try:
+        with open(path, encoding="utf-8") as existing:
+            for line in existing:
+                entry = line.strip()
+                if not entry or entry.startswith("#"):
+                    continue
+
+                entry = entry.removeprefix("||").removesuffix("^").strip("/")
+                if entry:
+                    targets.add(entry.lower())
+    except FileNotFoundError:
+        pass
+
+    return targets
 
 
 def extract_stream_domains(source):
@@ -79,7 +100,8 @@ def extract_blocklist_domains(text):
     return domains
 
 
-targets = set()
+# Start with previously written entries, then merge in entries from every source.
+targets = load_existing_targets(FILTERS_FILE)
 
 # Get Base64-encoded hostnames from the stream page.
 stream_source = fetch_text(STREAM_URL)
@@ -135,7 +157,7 @@ blocklist_text = fetch_text(BLOCKLIST_URL)
 if blocklist_text:
     targets.update(extract_blocklist_domains(blocklist_text))
 
-# Avoid replacing the existing file with an empty list if every source failed.
+# Avoid replacing the existing file if there are no targets to check.
 if not targets:
     raise SystemExit("No targets were fetched; leaving filters.txt unchanged")
 
@@ -150,29 +172,37 @@ def check_target(target):
         schemes = ("https", "http")
 
     for scheme in schemes:
-        request = urllib.request.Request(
-            f"{scheme}://{host_for_url}/",
-            method="HEAD",
-            headers={"User-Agent": "Mozilla/8.0"},
-        )
+        url = f"{scheme}://{host_for_url}/"
 
-        try:
-            with urllib.request.urlopen(request, timeout=5):
+        # Try HEAD first, then a small ranged GET if HEAD fails.
+        for method in ("HEAD", "GET"):
+            request = urllib.request.Request(
+                url,
+                method=method,
+                headers={
+                    "User-Agent": "Mozilla/8.0",
+                    "Range": "bytes=0-0",
+                },
+            )
+
+            try:
+                with urllib.request.urlopen(request, timeout=5):
+                    return target
+            except urllib.error.HTTPError:
+                # Any HTTP status means the server responded.
                 return target
-        except urllib.error.HTTPError:
-            # An HTTP response, including 403 or 404, means it responded.
-            return target
-        except Exception:
-            continue
+            except Exception:
+                # For example, HEAD may be unsupported; try GET next.
+                continue
 
     return None
 
 
-# Check deduplicated targets concurrently; only responsive ones are written.
+# Check the deduplicated combined targets concurrently.
 with ThreadPoolExecutor(max_workers=20) as executor:
     results = executor.map(check_target, targets)
     active_targets = {target for target in results if target is not None}
 
-with open("filters.txt", "w", encoding="utf-8") as output:
+with open(FILTERS_FILE, "w", encoding="utf-8") as output:
     for target in sorted(active_targets):
         output.write(f"||{target}^\n")
