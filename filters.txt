@@ -76,6 +76,7 @@
 ||bjlyoraoznlxs.online^
 ||bkgcrsgnrbwlf.website^
 ||bltyxiybbdema.online^
+||bmestredqolzo.website^
 ||bnsthnozabfpi.online^
 ||bogcojvexhjfw.website^
 ||booejgnliutcd.online^
@@ -1171,6 +1172,9 @@
 ||wvzoezmzjgixc.space^
 ||wwesvxfqdabhf.space^
 ||wwtucxtfjczpn.site^
+||www.ixbrdykmup.com^
+||www.ptbqiavewrkggk.com^
+||www.xadsmart.com^
 ||wxtuiqwvpfoap.website^
 ||wxynsnaplyrio.online^
 ||wynvpuollzthr.online^
@@ -1187,6 +1191,7 @@
 ||xdltzbmlplnui.site^
 ||xdniaximcmxti.website^
 ||xfahmyqnqgkzw.site^
+||xfuxpfhoyvskq.online^
 ||xgfoyrudzstsr.online^
 ||xgwhfyaavzpyp.space^
 ||xgxvahupqhhxy.online^
@@ -1306,6 +1311,7 @@
 ||zvvsmauxxoagh.site^
 ||zvwsybhjnurrc.online^
 ||zvzpopazdasxh.website^
+||zwhkfaqumbynh.site^
 ||zwjkuzrtngjhc.space^
 ||zwrbgfinmhmns.site^
 ||zxgzgkqiqaqck.online^
@@ -1313,3 +1319,5 @@
 ||zyvhofzjqlvwb.space^
 ||zzjgigxgomlde.site^
 ||zzjvnnoprutlj.online^
+! MANUAL (not health-checked): srqck1.com
+||srqck1.com^
