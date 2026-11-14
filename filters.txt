@@ -1328,6 +1328,7 @@
 ||ymupokogvrqif.website^
 ||yoahwdxspvxwq.online^
 ||yofdrnkskrncy.site^
+||yojuqscfoodkd.site^
 ||yowsyejcaudph.site^
 ||yozdgjutexnvp.site^
 ||ypfjdasswhmzt.site^
@@ -1401,7 +1402,10 @@
 ||zzjgigxgomlde.site^
 ||zzjvnnoprutlj.online^
 # BEGIN ADD-DOMAINS
+||flingnow.date^
 ||istod.com^
+||jovialconnection.org^
 ||queenelissa-eixowyc.work^
+||slzlj.xyz^
 ||srqck1.com^
 # END ADD-DOMAINS
