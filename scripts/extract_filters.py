@@ -42,6 +42,25 @@ def fetch_text(url):
     return None
 
 
+def parse_ip_address(value):
+    """Return a normalized IP address, or None if the value is not a valid IP."""
+    if not isinstance(value, str):
+        return None
+
+    value = value.strip()
+    if not value:
+        return None
+
+    # Accept bracketed IPv6 entries if encountered.
+    if value.startswith("[") and value.endswith("]"):
+        value = value[1:-1]
+
+    try:
+        return str(ipaddress.ip_address(value))
+    except ValueError:
+        return None
+
+
 def load_existing_targets(path):
     """Load old non-manual filter entries, skipping the marked manual section."""
     targets = set()
@@ -88,24 +107,13 @@ def load_add_domains(path):
     return domains
 
 
-def parse_ip_address(value):
-    """Return a validated, normalized IP address, or None if invalid."""
-    if not isinstance(value, str) or not value.strip():
-        return None
-
-    try:
-        return str(ipaddress.ip_address(value.strip()))
-    except ValueError:
-        return None
-
-
 def extract_zone_ips(config):
-    """Extract validated IPs from decoyDomainZones."""
+    """Return validated IPs from decoyDomainZones, or None if it is missing/invalid."""
     zones = config.get("decoyDomainZones")
     if not isinstance(zones, dict):
         return None
 
-    addresses_found = set()
+    ips = set()
 
     for addresses in zones.values():
         if not isinstance(addresses, list):
@@ -114,9 +122,9 @@ def extract_zone_ips(config):
         for address in addresses:
             parsed_ip = parse_ip_address(address)
             if parsed_ip:
-                addresses_found.add(parsed_ip)
+                ips.add(parsed_ip)
 
-    return addresses_found
+    return ips
 
 
 def extract_domains_from_text(text):
@@ -199,18 +207,17 @@ def extract_blocklist_domains(text):
 
 manual_targets = load_add_domains(ADD_DOMAINS_FILE)
 
-# Preserve previously discovered entries, excluding the marked manual section.
+# Load previous automatic entries, excluding the marked manual section.
 targets = load_existing_targets(FILTERS_FILE) - manual_targets
 
-# Remember old filter IPs so they can be replaced by the current JSON IPs
-# if the config is successfully fetched and parsed.
+# Identify previously stored IPs so they can be replaced by the current JSON set.
 previous_filter_ips = {
     parsed_ip
     for target in targets
     if (parsed_ip := parse_ip_address(target)) is not None
 }
 
-# Get domains and IPs from the XOR-encoded JavaScript value.
+# Fetch and decode the XOR-encoded JavaScript config.
 js_source = fetch_text(SOURCE_URL)
 if js_source:
     match = re.search(
@@ -237,15 +244,15 @@ if js_source:
 
             current_json_ips = extract_zone_ips(config)
 
-            # A dict means the JSON contains an authoritative zone-IP list.
-            # Replace prior filter IPs only after the config has decoded
-            # successfully and decoyDomainZones has the expected dict format.
+            # If decoyDomainZones was present and valid, it is authoritative:
+            # remove old filter IPs and add the validated IPs from this config.
+            # An empty set clears old IPs when the valid JSON contains no valid IPs.
             if current_json_ips is not None:
-                if previous_filter_ips != current_json_ips:
-                    targets.difference_update(previous_filter_ips)
-                    targets.update(current_json_ips)
+                targets.difference_update(previous_filter_ips)
+                targets.update(current_json_ips)
 
         except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
+            # If the config can't be decoded, leave the existing IPs unchanged.
             pass
 
 # Get Base64-encoded hostnames from the stream page.
@@ -256,7 +263,7 @@ if stream_source:
     except Exception:
         pass
 
-# Add domains from tsd.txt and tsd_m.txt, derived from SOURCE_URL's directory.
+# Add domains from tsd.txt and tsd_m.txt beside SOURCE_URL.
 try:
     targets.update(fetch_tsd_domains())
 except Exception:
@@ -267,7 +274,7 @@ blocklist_text = fetch_text(BLOCKLIST_URL)
 if blocklist_text:
     targets.update(extract_blocklist_domains(blocklist_text))
 
-# Manual entries are included even if no other source succeeded.
+# Include current manual entries.
 targets.update(manual_targets)
 
 if not targets:
@@ -275,9 +282,10 @@ if not targets:
 
 
 def check_target(target):
+    """Return target if it responds to HTTP/HTTPS; IP targets are excluded elsewhere."""
     try:
         ip = ipaddress.ip_address(target)
-        host_for_url = f"[{target}]" if ip.version == 6 else target
+        host_for_url = f"[{ip}]" if ip.version == 6 else str(ip)
         schemes = ("http",)
     except ValueError:
         host_for_url = target
@@ -310,14 +318,20 @@ def check_target(target):
     return None
 
 
-# Manual entries bypass the active check.
-targets_to_check = targets - manual_targets
+# Separate IPs from domains. IPs from the JS config are not active-checked.
+ip_targets = {
+    target
+    for target in targets
+    if parse_ip_address(target) is not None
+}
+targets_to_check = targets - manual_targets - ip_targets
 
 with ThreadPoolExecutor(max_workers=20) as executor:
     results = executor.map(check_target, targets_to_check)
     active_targets = {target for target in results if target is not None}
 
-# Include all current add-domains.txt entries, whether active or not.
+# Keep all validated IP entries without checking them, and include manual entries.
+active_targets.update(ip_targets)
 active_targets.update(manual_targets)
 
 with open(FILTERS_FILE, "w", encoding="utf-8") as output:
