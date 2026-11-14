@@ -71,6 +71,7 @@
 ||bddzutnlebxqc.site^
 ||bdfrzlzxuibgx.online^
 ||begbbvroxfigi.website^
+||belygylykijife.com^
 ||bhbydrisbxmnu.site^
 ||bigdcdimorrzk.space^
 ||binxafdgelqxx.online^
@@ -204,6 +205,7 @@
 ||dnhaoakhtfpbe.online^
 ||dobzrojnergly.space^
 ||doibyspdqlbmd.online^
+||donuheridimylo.com^
 ||doumeqtimrllx.online^
 ||dpfezxfkstyhu.online^
 ||dpizyarnfpcxw.site^
@@ -308,6 +310,7 @@
 ||flaminguins.com^
 ||flxlxulkfblwx.space^
 ||flzemcakeaehr.space^
+||fmfonavgkdvfo.site^
 ||fmjabekytruuu.online^
 ||fmsvimfhdedto.website^
 ||fmwjtikjajqrh.website^
@@ -1377,5 +1380,6 @@
 ||zyvhofzjqlvwb.space^
 ||zzjgigxgomlde.site^
 ||zzjvnnoprutlj.online^
-! MANUAL (not health-checked): srqck1.com
+# BEGIN ADD-DOMAINS
 ||srqck1.com^
+# END ADD-DOMAINS
