@@ -1159,6 +1159,7 @@
 ||vcmgodxrmxidh.site^
 ||vcnecasmrzrne.space^
 ||veitkxlaefzsi.online^
+||venbvqrkmewyo.site^
 ||vesjqclgesawj.site^
 ||vexbhrvesysec.space^
 ||veyzjyazfksxj.site^
@@ -1297,6 +1298,7 @@
 ||xrvbkeoaegkam.space^
 ||xscueumaijhmk.website^
 ||xsvtzgislrwlj.site^
+||xtlimvctikvxs.website^
 ||xtnltaiulkhid.site^
 ||xtxzcgnuvdwrg.site^
 ||xuiadqdmhcdxr.site^
@@ -1412,26 +1414,39 @@
 # BEGIN ADD-DOMAINS
 ||6tip.com^
 ||7hyy.com^
+||agynarylanose.shop^
+||asdfix.com^
 ||bedbugssniffingdogs.com^
 ||bestcrongreenfunnel.com^
 ||cardiaccrystaleternity.com^
 ||casabasterrets.qpon^
+||dorktrack.com^
+||effic.pro^
 ||flingnow.date^
+||inadsexchange.com^
 ||istod.com^
 ||jovialconnection.org^
 ||korlumo.com^
 ||luxuryfashionideas.com^
 ||m1vm.com^
+||mdnspace.com^
+||meadowceramic.com^
 ||nodeviro.com^
+||o-set.com^
 ||pandapuppy.site^
 ||queenelissa-eixowyc.work^
 ||rtbdc-ssp.com^
 ||searchtag.info^
 ||slzlj.xyz^
+||sportsolutions.info^
 ||srqck1.com^
+||stuins.com^
 ||surveyhunts.com^
 ||tavomi.click^
 ||trkcpbrbw01.org^
+||viibjsui.com^
 ||viicmkru.com^
+||vvhepvilma.info^
+||wildgardencircle.com^
 ||xs2.shop^
 # END ADD-DOMAINS
