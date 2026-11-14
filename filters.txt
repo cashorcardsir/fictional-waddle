@@ -74,6 +74,7 @@
 ||bcxaiqdkdmcbu.site^
 ||bddzutnlebxqc.site^
 ||bdfrzlzxuibgx.online^
+||bdxrhyisfhdpc.site^
 ||begbbvroxfigi.website^
 ||belygylykijife.com^
 ||bhbydrisbxmnu.site^
@@ -311,7 +312,6 @@
 ||fjxlauvxpixsi.online^
 ||fkdeavpxkjuoa.space^
 ||fkwfxabkfzicq.website^
-||flaminguins.com^
 ||flxlxulkfblwx.space^
 ||flzemcakeaehr.space^
 ||fmfonavgkdvfo.site^
@@ -1103,6 +1103,7 @@
 ||tzyndqgiczmus.space^
 ||uazawlvvpacgj.space^
 ||ubgomvvnftoom.space^
+||ubprqckzqnwuf.online^
 ||ubsqyiakrbdvc.site^
 ||ufauolqhhcpmd.space^
 ||uffpoomcsktub.site^
@@ -1238,6 +1239,7 @@
 ||wwtucxtfjczpn.site^
 ||www.cgknxinrt.com^
 ||www.eekpiaqf.com^
+||www.foxwvfkyfhwjp.com^
 ||www.ixbrdykmup.com^
 ||www.kdwtwlinnb.com^
 ||www.piiesnlyvmt.com^
@@ -1245,6 +1247,7 @@
 ||www.ptbqiavewrkggk.com^
 ||www.uultxrcyrqjon.com^
 ||www.xadsmart.com^
+||www.zzejvcepzzkv.com^
 ||wxtuiqwvpfoap.website^
 ||wxynsnaplyrio.online^
 ||wyanesrajiqvx.online^
@@ -1398,5 +1401,7 @@
 ||zzjgigxgomlde.site^
 ||zzjvnnoprutlj.online^
 # BEGIN ADD-DOMAINS
+||istod.com^
+||queenelissa-eixowyc.work^
 ||srqck1.com^
 # END ADD-DOMAINS
