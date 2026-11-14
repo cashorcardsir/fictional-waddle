@@ -6,7 +6,7 @@ import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 STREAM_URL = "https://dlhd.st/stream/stream-51.php"
 SOURCE_URL = "https://uqload.vc/js2/x7qf3m2v.js"
@@ -14,8 +14,9 @@ BLOCKLIST_URL = "https://codeberg.org/jcoscia/evasive-ads-blocklist/raw/branch/m
 XOR_KEY = b"xR9tB2pL6q7MwVe"
 
 FILTERS_FILE = "filters.txt"
-ADDITIONAL_DOMAINS_FILE = "add-domains.txt"
-MANUAL_MARKER = "! MANUAL (not health-checked):"
+ADD_DOMAINS_FILE = "add-domains.txt"
+MANUAL_START = "# BEGIN ADD-DOMAINS"
+MANUAL_END = "# END ADD-DOMAINS"
 
 DOMAIN_PATTERN = re.compile(
     r"(?=.{1,253}$)"
@@ -42,59 +43,114 @@ def fetch_text(url):
 
 
 def load_existing_targets(path):
-    """Load prior checked entries, skipping entries marked as manual."""
+    """Load old non-manual filter entries, skipping the marked manual section."""
     targets = set()
-    skip_next_entry = False
+    in_manual_section = False
 
     try:
         with open(path, encoding="utf-8") as existing:
             for line in existing:
                 entry = line.strip()
-                if not entry:
+
+                if entry == MANUAL_START:
+                    in_manual_section = True
                     continue
 
-                if entry.startswith(MANUAL_MARKER):
-                    skip_next_entry = True
+                if entry == MANUAL_END:
+                    in_manual_section = False
                     continue
 
-                if entry.startswith(("!", "#")):
-                    continue
-
-                if skip_next_entry:
-                    skip_next_entry = False
+                if in_manual_section or not entry or entry.startswith("#"):
                     continue
 
                 entry = entry.removeprefix("||").removesuffix("^").strip("/")
                 if entry:
                     targets.add(entry.lower())
-
     except FileNotFoundError:
         pass
 
     return targets
 
 
-def load_additional_domains(path):
-    """Read plain domains or ||domain^ entries from the manual list."""
+def load_add_domains(path):
+    """Load valid plain-text domains, one per line."""
     domains = set()
 
     try:
-        with open(path, encoding="utf-8") as additions:
-            for line in additions:
-                entry = line.strip()
-
-                if not entry or entry.startswith(("!", "#")):
-                    continue
-
-                # Allow inline comments in add-domains.txt.
-                entry = entry.split("#", 1)[0].strip()
-                entry = entry.removeprefix("||").removesuffix("^").strip("/")
-
-                if DOMAIN_PATTERN.fullmatch(entry):
-                    domains.add(entry.lower())
-
+        with open(path, encoding="utf-8") as source:
+            for line in source:
+                domain = line.strip().lower()
+                if domain and DOMAIN_PATTERN.fullmatch(domain):
+                    domains.add(domain)
     except FileNotFoundError:
         pass
+
+    return domains
+
+
+def parse_ip_address(value):
+    """Return a validated, normalized IP address, or None if invalid."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+
+    try:
+        return str(ipaddress.ip_address(value.strip()))
+    except ValueError:
+        return None
+
+
+def extract_zone_ips(config):
+    """Extract validated IPs from decoyDomainZones."""
+    zones = config.get("decoyDomainZones")
+    if not isinstance(zones, dict):
+        return None
+
+    addresses_found = set()
+
+    for addresses in zones.values():
+        if not isinstance(addresses, list):
+            continue
+
+        for address in addresses:
+            parsed_ip = parse_ip_address(address)
+            if parsed_ip:
+                addresses_found.add(parsed_ip)
+
+    return addresses_found
+
+
+def extract_domains_from_text(text):
+    """Extract domains from lines containing a domain or URL."""
+    domains = set()
+
+    for line in text.splitlines():
+        entry = line.strip()
+        if not entry or entry.startswith("#"):
+            continue
+
+        entry = entry.removeprefix("||").removesuffix("^").strip()
+
+        if "://" in entry:
+            parsed = urlsplit(entry)
+        else:
+            parsed = urlsplit("//" + entry)
+
+        host = parsed.hostname
+        if host and DOMAIN_PATTERN.fullmatch(host):
+            domains.add(host.lower())
+
+    return domains
+
+
+def fetch_tsd_domains():
+    """Fetch domains from tsd.txt and tsd_m.txt beside SOURCE_URL."""
+    domains = set()
+
+    for filename in ("tsd.txt", "tsd_m.txt"):
+        url = urljoin(SOURCE_URL, filename)
+        text = fetch_text(url)
+        if text:
+            domains.update(extract_domains_from_text(text))
 
     return domains
 
@@ -130,9 +186,10 @@ def extract_blocklist_domains(text):
 
     for line in text.splitlines():
         entry = line.strip()
-        if not entry or entry.startswith(("#", "!")):
+        if not entry or entry.startswith("#"):
             continue
 
+        # Accept plain domains and common adblock-style domain entries.
         entry = entry.removeprefix("||").removesuffix("^").strip("/")
         if DOMAIN_PATTERN.fullmatch(entry):
             domains.add(entry.lower())
@@ -140,17 +197,18 @@ def extract_blocklist_domains(text):
     return domains
 
 
-# Previously checked entries are rechecked; manual entries are loaded separately.
-targets = load_existing_targets(FILTERS_FILE)
-manual_domains = load_additional_domains(ADDITIONAL_DOMAINS_FILE)
+manual_targets = load_add_domains(ADD_DOMAINS_FILE)
 
-# Get Base64-encoded hostnames from the stream page.
-stream_source = fetch_text(STREAM_URL)
-if stream_source:
-    try:
-        targets.update(extract_stream_domains(stream_source))
-    except Exception:
-        pass
+# Preserve previously discovered entries, excluding the marked manual section.
+targets = load_existing_targets(FILTERS_FILE) - manual_targets
+
+# Remember old filter IPs so they can be replaced by the current JSON IPs
+# if the config is successfully fetched and parsed.
+previous_filter_ips = {
+    parsed_ip
+    for target in targets
+    if (parsed_ip := parse_ip_address(target)) is not None
+}
 
 # Get domains and IPs from the XOR-encoded JavaScript value.
 js_source = fetch_text(SOURCE_URL)
@@ -177,33 +235,43 @@ if js_source:
                 if isinstance(value, str) and value.strip():
                     targets.add(value.strip().lower())
 
-            zones = config.get("decoyDomainZones", {})
-            if isinstance(zones, dict):
-                for addresses in zones.values():
-                    if isinstance(addresses, list):
-                        for address in addresses:
-                            if isinstance(address, str):
-                                try:
-                                    targets.add(
-                                        str(ipaddress.ip_address(address.strip()))
-                                    )
-                                except ValueError:
-                                    pass
+            current_json_ips = extract_zone_ips(config)
+
+            # A dict means the JSON contains an authoritative zone-IP list.
+            # Replace prior filter IPs only after the config has decoded
+            # successfully and decoyDomainZones has the expected dict format.
+            if current_json_ips is not None:
+                if previous_filter_ips != current_json_ips:
+                    targets.difference_update(previous_filter_ips)
+                    targets.update(current_json_ips)
 
         except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
             pass
 
-# Add domains from the Codeberg blocklist.
+# Get Base64-encoded hostnames from the stream page.
+stream_source = fetch_text(STREAM_URL)
+if stream_source:
+    try:
+        targets.update(extract_stream_domains(stream_source))
+    except Exception:
+        pass
+
+# Add domains from tsd.txt and tsd_m.txt, derived from SOURCE_URL's directory.
+try:
+    targets.update(fetch_tsd_domains())
+except Exception:
+    pass
+
+# Add domains from the blocklist.
 blocklist_text = fetch_text(BLOCKLIST_URL)
 if blocklist_text:
     targets.update(extract_blocklist_domains(blocklist_text))
 
-# Manual entries are written directly and must not go through the checker.
-targets.difference_update(manual_domains)
+# Manual entries are included even if no other source succeeded.
+targets.update(manual_targets)
 
-# If there are no targets at all, leave the existing file unchanged.
-if not targets and not manual_domains:
-    raise SystemExit("No targets were found; leaving filters.txt unchanged")
+if not targets:
+    raise SystemExit("No targets were fetched; leaving filters.txt unchanged")
 
 
 def check_target(target):
@@ -218,7 +286,7 @@ def check_target(target):
     for scheme in schemes:
         url = f"{scheme}://{host_for_url}/"
 
-        # Try HEAD, then a small ranged GET if HEAD fails.
+        # Try HEAD first, then a small ranged GET if HEAD fails.
         for method in ("HEAD", "GET"):
             request = urllib.request.Request(
                 url,
@@ -242,15 +310,23 @@ def check_target(target):
     return None
 
 
-# Check only non-manual targets.
+# Manual entries bypass the active check.
+targets_to_check = targets - manual_targets
+
 with ThreadPoolExecutor(max_workers=20) as executor:
-    results = executor.map(check_target, targets)
+    results = executor.map(check_target, targets_to_check)
     active_targets = {target for target in results if target is not None}
 
+# Include all current add-domains.txt entries, whether active or not.
+active_targets.update(manual_targets)
+
 with open(FILTERS_FILE, "w", encoding="utf-8") as output:
-    for target in sorted(active_targets):
+    # Write automatically sourced and checked entries outside the manual block.
+    for target in sorted(active_targets - manual_targets):
         output.write(f"||{target}^\n")
 
-    for domain in sorted(manual_domains):
-        output.write(f"{MANUAL_MARKER} {domain}\n")
-        output.write(f"||{domain}^\n")
+    # Replace this marked section from add-domains.txt on each run.
+    output.write(f"{MANUAL_START}\n")
+    for target in sorted(manual_targets):
+        output.write(f"||{target}^\n")
+    output.write(f"{MANUAL_END}\n")
