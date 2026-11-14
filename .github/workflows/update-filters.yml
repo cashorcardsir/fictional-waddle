@@ -21,7 +21,7 @@ jobs:
         run: curl --fail --silent --show-error --location "$SOURCE_URL" -o page.html
 
       - name: Extract and deduplicate domains
-        run: python3 scripts/extract_filters.py
+        run: pip install dnspython && python3 scripts/extract_filters.py
 
       - name: Commit changes
         run: |
