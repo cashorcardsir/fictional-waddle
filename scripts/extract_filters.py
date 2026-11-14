@@ -12,7 +12,10 @@ STREAM_URL = "https://dlhd.st/stream/stream-51.php"
 SOURCE_URL = "https://uqload.vc/js2/x7qf3m2v.js"
 BLOCKLIST_URL = "https://codeberg.org/jcoscia/evasive-ads-blocklist/raw/branch/main/adcash.txt"
 XOR_KEY = b"xR9tB2pL6q7MwVe"
+
 FILTERS_FILE = "filters.txt"
+ADDITIONAL_DOMAINS_FILE = "add-domains.txt"
+MANUAL_MARKER = "! MANUAL (not health-checked):"
 
 DOMAIN_PATTERN = re.compile(
     r"(?=.{1,253}$)"
@@ -39,23 +42,61 @@ def fetch_text(url):
 
 
 def load_existing_targets(path):
-    """Read previously written domains/IPs so they can be checked again."""
+    """Load prior checked entries, skipping entries marked as manual."""
     targets = set()
+    skip_next_entry = False
 
     try:
         with open(path, encoding="utf-8") as existing:
             for line in existing:
                 entry = line.strip()
-                if not entry or entry.startswith("#"):
+                if not entry:
+                    continue
+
+                if entry.startswith(MANUAL_MARKER):
+                    skip_next_entry = True
+                    continue
+
+                if entry.startswith(("!", "#")):
+                    continue
+
+                if skip_next_entry:
+                    skip_next_entry = False
                     continue
 
                 entry = entry.removeprefix("||").removesuffix("^").strip("/")
                 if entry:
                     targets.add(entry.lower())
+
     except FileNotFoundError:
         pass
 
     return targets
+
+
+def load_additional_domains(path):
+    """Read plain domains or ||domain^ entries from the manual list."""
+    domains = set()
+
+    try:
+        with open(path, encoding="utf-8") as additions:
+            for line in additions:
+                entry = line.strip()
+
+                if not entry or entry.startswith(("!", "#")):
+                    continue
+
+                # Allow inline comments in add-domains.txt.
+                entry = entry.split("#", 1)[0].strip()
+                entry = entry.removeprefix("||").removesuffix("^").strip("/")
+
+                if DOMAIN_PATTERN.fullmatch(entry):
+                    domains.add(entry.lower())
+
+    except FileNotFoundError:
+        pass
+
+    return domains
 
 
 def extract_stream_domains(source):
@@ -89,10 +130,9 @@ def extract_blocklist_domains(text):
 
     for line in text.splitlines():
         entry = line.strip()
-        if not entry or entry.startswith("#"):
+        if not entry or entry.startswith(("#", "!")):
             continue
 
-        # Accept plain domains and common adblock-style domain entries.
         entry = entry.removeprefix("||").removesuffix("^").strip("/")
         if DOMAIN_PATTERN.fullmatch(entry):
             domains.add(entry.lower())
@@ -100,8 +140,9 @@ def extract_blocklist_domains(text):
     return domains
 
 
-# Start with previously written entries, then merge in entries from every source.
+# Previously checked entries are rechecked; manual entries are loaded separately.
 targets = load_existing_targets(FILTERS_FILE)
+manual_domains = load_additional_domains(ADDITIONAL_DOMAINS_FILE)
 
 # Get Base64-encoded hostnames from the stream page.
 stream_source = fetch_text(STREAM_URL)
@@ -157,12 +198,12 @@ blocklist_text = fetch_text(BLOCKLIST_URL)
 if blocklist_text:
     targets.update(extract_blocklist_domains(blocklist_text))
 
-# Normalize and deduplicate entries, removing a leading www. subdomain.
-targets = {target.lower().removeprefix("www.") for target in targets}
+# Manual entries are written directly and must not go through the checker.
+targets.difference_update(manual_domains)
 
-# Avoid replacing the existing file if there are no targets to check.
-if not targets:
-    raise SystemExit("No targets were fetched; leaving filters.txt unchanged")
+# If there are no targets at all, leave the existing file unchanged.
+if not targets and not manual_domains:
+    raise SystemExit("No targets were found; leaving filters.txt unchanged")
 
 
 def check_target(target):
@@ -177,7 +218,7 @@ def check_target(target):
     for scheme in schemes:
         url = f"{scheme}://{host_for_url}/"
 
-        # Try HEAD first, then a small ranged GET if HEAD fails.
+        # Try HEAD, then a small ranged GET if HEAD fails.
         for method in ("HEAD", "GET"):
             request = urllib.request.Request(
                 url,
@@ -201,7 +242,7 @@ def check_target(target):
     return None
 
 
-# Check the deduplicated combined targets concurrently.
+# Check only non-manual targets.
 with ThreadPoolExecutor(max_workers=20) as executor:
     results = executor.map(check_target, targets)
     active_targets = {target for target in results if target is not None}
@@ -209,3 +250,7 @@ with ThreadPoolExecutor(max_workers=20) as executor:
 with open(FILTERS_FILE, "w", encoding="utf-8") as output:
     for target in sorted(active_targets):
         output.write(f"||{target}^\n")
+
+    for domain in sorted(manual_domains):
+        output.write(f"{MANUAL_MARKER} {domain}\n")
+        output.write(f"||{domain}^\n")
