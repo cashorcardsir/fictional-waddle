@@ -679,6 +679,7 @@
 ||lxoukuwkzvada.online^
 ||lxxdiuzxfvylv.site^
 ||lyefmxeaaqkoi.site^
+||lyowhswmwwina.website^
 ||lyrhgcbvzesii.website^
 ||lytuosocmuonp.site^
 ||lzduxwzbqqlyx.space^
@@ -1407,10 +1408,28 @@
 ||zzjgigxgomlde.site^
 ||zzjvnnoprutlj.online^
 # BEGIN ADD-DOMAINS
+||6tip.com^
+||7hyy.com^
+||bedbugssniffingdogs.com^
+||bestcrongreenfunnel.com^
+||cardiaccrystaleternity.com^
+||casabasterrets.qpon^
 ||flingnow.date^
 ||istod.com^
 ||jovialconnection.org^
+||korlumo.com^
+||luxuryfashionideas.com^
+||m1vm.com^
+||nodeviro.com^
+||pandapuppy.site^
 ||queenelissa-eixowyc.work^
+||rtbdc-ssp.com^
+||searchtag.info^
 ||slzlj.xyz^
 ||srqck1.com^
+||surveyhunts.com^
+||tavomi.click^
+||trkcpbrbw01.org^
+||viicmkru.com^
+||xs2.shop^
 # END ADD-DOMAINS
