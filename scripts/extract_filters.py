@@ -70,6 +70,15 @@ def normalize_domain(value):
     if "." not in domain:
         return None
 
+    # Reject obviously malformed entries, including illegal characters.
+    if not re.fullmatch(r"[a-z0-9.-]+", domain):
+        return None
+
+    # Reject labels that start/end with '-' or are empty.
+    labels = domain.split(".")
+    if any(not label or label.startswith("-") or label.endswith("-") for label in labels):
+        return None
+
     if DOMAIN_PATTERN.fullmatch(domain):
         return domain
 
@@ -180,8 +189,7 @@ def clean_manual_domains(path):
 
         domain = normalize_domain(entry_text)
         if domain is None:
-            # Leave malformed entries for the repository owner to review.
-            kept_lines.append(raw_line)
+            print(f"Removing malformed manual domain: {entry_text}")
             continue
 
         status = check_dns_records(domain)
