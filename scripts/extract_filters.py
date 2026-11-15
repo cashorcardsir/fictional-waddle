@@ -8,7 +8,6 @@ from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urljoin, urlsplit
 
 import dns.exception
-import dns.rdatatype
 import dns.resolver
 
 STREAM_URL = "https://dlhd.st/stream/stream-51.php"
@@ -27,16 +26,16 @@ DOMAIN_PATTERN = re.compile(
     r"(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*"
 )
 
-DNS_META_TYPES = {
-    "ANY",
-    "AXFR",
-    "IXFR",
-    "MAILA",
-    "MAILB",
-    "OPT",
-    "TKEY",
-    "TSIG",
-}
+DNS_RECORD_TYPES = (
+    "A",
+    "AAAA",
+    "CNAME",
+    "MX",
+    "NS",
+    "TXT",
+    "SOA",
+    "CAA",
+)
 
 
 def fetch_text(url):
@@ -57,7 +56,7 @@ def fetch_text(url):
 
 
 def normalize_domain(value):
-    """Normalize a domain and remove a leading www. label."""
+    """Normalize a domain and strip a leading www. label."""
     if not isinstance(value, str):
         return None
 
@@ -72,7 +71,7 @@ def normalize_domain(value):
 
 
 def load_existing_targets(path):
-    """Load old non-manual domain entries, skipping the marked manual section."""
+    """Load old automatic entries, skipping the marked manual section."""
     targets = set()
     in_manual_section = False
 
@@ -102,75 +101,98 @@ def load_existing_targets(path):
     return targets
 
 
-def load_add_domains(path):
-    """Load and normalize plain-text domains, one per line."""
-    domains = set()
-
-    try:
-        with open(path, encoding="utf-8") as source:
-            for line in source:
-                domain = normalize_domain(line)
-                if domain:
-                    domains.add(domain)
-    except FileNotFoundError:
-        pass
-
-    return domains
-
-
-def get_dns_record_types():
-    """Get ordinary DNS record types supported by dnspython."""
-    record_types = set()
-
-    for name, value in dns.rdatatype.RdataType.__members__.items():
-        if name in DNS_META_TYPES:
-            continue
-
-        code = int(value)
-        if not 0 < code < 65535:
-            continue
-
-        record_type = dns.rdatatype.to_text(code)
-        if not record_type.startswith("TYPE"):
-            record_types.add(record_type)
-
-    return sorted(record_types)
-
-
-DNS_RECORD_TYPES = get_dns_record_types()
-
-
-def has_dns_record(domain):
-    """Return True if a DNS query finds a supported record type."""
-    resolver = dns.resolver.Resolver()
-    resolver.timeout = 2.0
-    resolver.lifetime = 2.5
-
+def check_manual_domain(domain):
+    """Return True if DNS finds any supported record, False if it does not, else None on DNS errors."""
     for record_type in DNS_RECORD_TYPES:
         try:
-            answer = resolver.resolve(
+            answer = dns.resolver.resolve(
                 domain,
                 record_type,
-                search=False,
-                lifetime=2.5,
+                lifetime=5,
+                raise_on_no_answer=False,
             )
-            if answer.rrset and len(answer.rrset) > 0:
+            if answer and len(answer) > 0:
                 return True
-        except (dns.exception.DNSException, OSError):
+        except dns.resolver.NXDOMAIN:
+            return False
+        except dns.resolver.NoAnswer:
             continue
-        except Exception:
-            continue
+        except (dns.resolver.NoNameservers, dns.exception.Timeout):
+            return None
+        except dns.exception.DNSException:
+            return None
 
     return False
 
 
-def check_manual_domain(domain):
-    """Return a manually listed domain only if DNS finds a record."""
-    return domain if has_dns_record(domain) else None
+def clean_manual_domains(path):
+    """
+    Remove inactive manual domains from add-domains.txt, ignore/keep comments,
+    normalize domains, and return only DNS-active manual domains.
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as source:
+            lines = source.readlines()
+    except FileNotFoundError:
+        return set()
+
+    kept_lines = []
+    active_domains = set()
+
+    for raw_line in lines:
+        newline = "\n" if raw_line.endswith("\n") else ""
+        line_body = raw_line.rstrip("\r\n")
+
+        if not line_body.strip():
+            kept_lines.append(raw_line)
+            continue
+
+        # Ignore comments and preserve them in file if they are standalone
+        if line_body.lstrip().startswith("#"):
+            kept_lines.append(raw_line)
+            continue
+
+        # Split inline comments while preserving the comment text
+        if "#" in line_body:
+            entry_part, comment_part = line_body.split("#", 1)
+            comment_text = comment_part.strip()
+            entry_text = entry_part.strip()
+            comment_suffix = f" # {comment_text}" if comment_text else ""
+        else:
+            entry_text = line_body.strip()
+            comment_text = ""
+            comment_suffix = ""
+
+        if not entry_text:
+            kept_lines.append(raw_line)
+            continue
+
+        normalized = normalize_domain(entry_text)
+        if not normalized:
+            kept_lines.append(raw_line)
+            continue
+
+        status = check_manual_domain(normalized)
+
+        if status is False:
+            print(f"Removing inactive manual domain: {normalized}")
+            continue
+
+        # Keep active and temporarily-unavailable manual domains.
+        rewritten = f"{normalized}{comment_suffix}"
+        kept_lines.append(rewritten + newline)
+
+        if status is True:
+            active_domains.add(normalized)
+
+    with open(path, "w", encoding="utf-8") as output:
+        output.writelines(kept_lines)
+
+    return active_domains
 
 
 def extract_domains_from_text(text):
-    """Extract normalized domains from lines containing a domain or URL."""
+    """Extract normalized domains from a text blob containing domains or URLs."""
     domains = set()
 
     for line in text.splitlines():
@@ -248,9 +270,14 @@ def extract_blocklist_domains(text):
     return domains
 
 
-# Load previously discovered domains, excluding entries in the manual section.
-# Invalid entries, including old IP addresses, are ignored.
+# Manual entries are sanitized first: inactive ones are removed from add-domains.txt.
+manual_targets = clean_manual_domains(ADD_DOMAINS_FILE)
+
+# Keep previously discovered automatic targets, excluding the manual marker section.
 targets = load_existing_targets(FILTERS_FILE)
+
+# Add the active manual domains to the target set.
+targets.update(manual_targets)
 
 # Fetch and decode the XOR-encoded JavaScript config.
 js_source = fetch_text(SOURCE_URL)
@@ -272,9 +299,10 @@ if js_source:
             )
             config = json.loads(plaintext.decode("utf-8"))
 
-            # Only collect domain fields; decoyDomainZones IPs are ignored.
+            # Only collect valid domain fields from the fetched config.
             for field in ("adserverDomain", "decoyDomain", "cdnDomain"):
-                domain = normalize_domain(config.get(field))
+                value = config.get(field)
+                domain = normalize_domain(value)
                 if domain:
                     targets.add(domain)
 
@@ -289,40 +317,26 @@ if stream_source:
     except Exception:
         pass
 
-# Add domains from tsd.txt and tsd_m.txt.
+# Add domains from tsd.txt and tsd_m.txt beside SOURCE_URL.
 try:
     targets.update(fetch_tsd_domains())
 except Exception:
     pass
 
-# Add domains from the blocklist.
+# Add domains from the Codeberg blocklist.
 blocklist_text = fetch_text(BLOCKLIST_URL)
 if blocklist_text:
     targets.update(extract_blocklist_domains(blocklist_text))
-
-# Include only manually listed domains that resolve in DNS.
-manual_candidates = load_add_domains(ADD_DOMAINS_FILE)
-with ThreadPoolExecutor(max_workers=10) as executor:
-    manual_results = executor.map(
-        check_manual_domain,
-        sorted(manual_candidates),
-    )
-    manual_targets = {
-        domain for domain in manual_results if domain is not None
-    }
-
-targets.update(manual_targets)
 
 if not targets:
     raise SystemExit("No targets were fetched; leaving filters.txt unchanged")
 
 
 def check_target(target):
-    """Return a domain if its HTTP or HTTPS server responds."""
+    """Return a domain if it responds to an HTTP/HTTPS request."""
     for scheme in ("https", "http"):
         url = f"{scheme}://{target}/"
 
-        # Try HEAD first, then a small ranged GET if HEAD fails.
         for method in ("HEAD", "GET"):
             request = urllib.request.Request(
                 url,
@@ -337,31 +351,30 @@ def check_target(target):
                 with urllib.request.urlopen(request, timeout=5):
                     return target
             except urllib.error.HTTPError:
-                # Any HTTP status means the server responded.
                 return target
             except Exception:
-                # For example, HEAD may be unsupported; try GET next.
                 continue
 
     return None
 
 
-# Manual domains already passed their DNS check, so don't HTTP-check them.
+# Manual domains are already DNS-validated and should not be HTTP-checked again.
 targets_to_check = targets - manual_targets
 
 with ThreadPoolExecutor(max_workers=20) as executor:
     results = executor.map(check_target, sorted(targets_to_check))
-    active_targets = {domain for domain in results if domain is not None}
+    active_targets = {target for target in results if target is not None}
 
+# Keep the manual domains that passed DNS validation.
 active_targets.update(manual_targets)
 
 with open(FILTERS_FILE, "w", encoding="utf-8") as output:
-    # Write automatically sourced, responding domains outside the manual block.
-    for domain in sorted(active_targets - manual_targets):
-        output.write(f"||{domain}^\n")
+    # Write automatic entries outside the manual block.
+    for target in sorted(active_targets - manual_targets):
+        output.write(f"||{target}^\n")
 
-    # Refresh this section from add-domains.txt after DNS checking.
+    # Rebuild the manual marker section from the active manual entries.
     output.write(f"{MANUAL_START}\n")
-    for domain in sorted(manual_targets):
-        output.write(f"||{domain}^\n")
+    for target in sorted(manual_targets):
+        output.write(f"||{target}^\n")
     output.write(f"{MANUAL_END}\n")
