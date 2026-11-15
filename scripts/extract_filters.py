@@ -97,7 +97,7 @@ def normalize_domain(value):
 
 
 def load_existing_targets(path):
-    """Load previous automatic entries and ignore legacy marker lines."""
+    """Load previous automatic entries and ignore comment lines."""
     targets = set()
 
     try:
@@ -108,9 +108,9 @@ def load_existing_targets(path):
                     continue
 
                 entry = entry.removeprefix("||").removesuffix("^").strip("/")
-                domain = normalize_domain(entry)
-                if domain:
-                    targets.add(domain)
+                target = normalize_ip(entry) or normalize_domain(entry)
+                if target:
+                    targets.add(target)
     except FileNotFoundError:
         pass
 
@@ -152,9 +152,11 @@ def check_dns_records(domain):
 
 def clean_manual_domains(path):
     """
-    Remove confirmed inactive or malformed entries from add-domains.txt.
-    Preserve comments and entries with temporary DNS errors. Valid IP literals
-    are retained and included without performing DNS record lookups.
+    Normalize and deduplicate add-domains.txt, removing confirmed inactive or
+    malformed entries. Preserve comments and entries with temporary DNS errors.
+    Valid IP literals are retained without DNS lookups. The first occurrence
+    of each normalized target is kept, so www-prefixed/domain/IP variants
+    collapse to one entry.
     """
     try:
         with open(path, "r", encoding="utf-8") as source:
@@ -164,15 +166,19 @@ def clean_manual_domains(path):
 
     kept_lines = []
     active_targets = set()
+    seen_targets = set()
 
     for raw_line in lines:
         newline = "\n" if raw_line.endswith("\n") else ""
         line_body = raw_line.rstrip("\r\n")
 
+        # Preserve blank lines and standalone comments.
         if not line_body.strip() or line_body.lstrip().startswith("#"):
             kept_lines.append(raw_line)
             continue
 
+        # Ignore inline comments while parsing, and keep them with the first
+        # occurrence if that target remains in the input file.
         if "#" in line_body:
             entry_text, comment_text = line_body.split("#", 1)
             entry_text = entry_text.strip()
@@ -185,28 +191,39 @@ def clean_manual_domains(path):
             kept_lines.append(raw_line)
             continue
 
-        # IP addresses are validated and retained without DNS queries.
+        # Canonicalize IPs and domains before deduplication.
         ip_address = normalize_ip(entry_text)
         if ip_address is not None:
-            kept_lines.append(f"{ip_address}{comment_suffix}{newline}")
-            active_targets.add(ip_address)
-            continue
+            target = ip_address
+            is_ip = True
+        else:
+            target = normalize_domain(entry_text)
+            is_ip = False
 
-        domain = normalize_domain(entry_text)
-        if domain is None:
+        if target is None:
             print(f"Removing malformed manual target: {entry_text}")
             continue
 
-        status = check_dns_records(domain)
+        if target in seen_targets:
+            print(f"Removing duplicate manual target: {entry_text} (normalized as {target})")
+            continue
+        seen_targets.add(target)
 
-        if status is False:
-            print(f"Removing inactive manual domain: {domain}")
+        # IP addresses need no DNS record lookup.
+        if is_ip:
+            kept_lines.append(f"{target}{comment_suffix}{newline}")
+            active_targets.add(target)
             continue
 
-        kept_lines.append(f"{domain}{comment_suffix}{newline}")
+        status = check_dns_records(target)
+        if status is False:
+            print(f"Removing inactive manual domain: {target}")
+            continue
 
+        # Keep active entries and entries whose DNS status is uncertain.
+        kept_lines.append(f"{target}{comment_suffix}{newline}")
         if status is True:
-            active_targets.add(domain)
+            active_targets.add(target)
 
     with open(path, "w", encoding="utf-8") as output:
         output.writelines(kept_lines)
@@ -294,8 +311,8 @@ def extract_blocklist_domains(text):
     return domains
 
 
-# Clean manual entries. Domain names are DNS-checked; valid IP literals are
-# retained directly without DNS lookups.
+# Normalize and deduplicate manual entries. Domains are DNS-checked; valid IPs
+# are retained directly without DNS lookups.
 manual_targets = clean_manual_domains(ADD_DOMAINS_FILE)
 targets = load_existing_targets(FILTERS_FILE)
 
@@ -342,19 +359,22 @@ blocklist_text = fetch_text(BLOCKLIST_URL)
 if blocklist_text:
     targets.update(extract_blocklist_domains(blocklist_text))
 
-automatic_candidates = sorted(targets - manual_targets)
+# IP literals are not DNS names; keep any already-present ones without queries.
+automatic_ips = {target for target in targets if normalize_ip(target) is not None}
+automatic_candidates = sorted(
+    target for target in targets - manual_targets if normalize_ip(target) is None
+)
 
 with ThreadPoolExecutor(max_workers=20) as executor:
     results = executor.map(check_dns_records, automatic_candidates)
 
-active_automatic_targets = {
+active_automatic_targets = automatic_ips | {
     domain
     for domain, is_active in zip(automatic_candidates, results)
     if is_active is True
 }
 
-# Plain list output: include active automatic targets and validated manual
-# domains/IPs. Manual IP addresses have not been DNS-checked.
+# Plain list output: active automatic targets plus active manual domains/IPs.
 active_targets = active_automatic_targets | manual_targets
 with open(FILTERS_FILE, "w", encoding="utf-8") as output:
     for target in sorted(active_targets):
