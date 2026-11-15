@@ -140,7 +140,7 @@ def clean_manual_domains(path):
     """
     Remove confirmed inactive entries from add-domains.txt.
     Preserve comments and entries with temporary DNS errors; return only
-    manual domains confirmed to have a DNS record.
+    manually listed domains confirmed to have a DNS record.
     """
     try:
         with open(path, "r", encoding="utf-8") as source:
@@ -335,23 +335,23 @@ if blocklist_text:
     targets.update(extract_blocklist_domains(blocklist_text))
 
 # DNS-check every automatically sourced target. Manual domains have already
-# been DNS-checked, so they are excluded from this second pass.
-automatic_candidates = targets - manual_targets
+# been DNS-checked, so they are excluded from this pass.
+automatic_candidates = sorted(targets - manual_targets)
 
 with ThreadPoolExecutor(max_workers=20) as executor:
-    results = executor.map(check_dns_records, sorted(automatic_candidates))
+    results = executor.map(check_dns_records, automatic_candidates)
 
 active_automatic_targets = {
     domain
-    for domain, is_active in zip(sorted(automatic_candidates), results)
+    for domain, is_active in zip(automatic_candidates, results)
     if is_active is True
 }
 
 active_targets = active_automatic_targets | manual_targets
 
-if not active_targets:
-    raise SystemExit("No active targets found; leaving filters.txt unchanged")
-
+# Always rewrite filters.txt, even if no active targets remain. This removes
+# previously listed domains that have now been confirmed inactive instead of
+# leaving stale entries behind. The manual markers are retained for next run.
 with open(FILTERS_FILE, "w", encoding="utf-8") as output:
     for domain in sorted(active_automatic_targets):
         output.write(f"||{domain}^\n")
