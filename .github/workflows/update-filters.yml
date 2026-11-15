@@ -25,11 +25,11 @@ jobs:
 
       - name: Commit changes
         run: |
-          if ! git diff --quiet -- filters.txt; then
+          if ! git diff --quiet -- filters.txt add-domains.txt; then
             git pull origin main
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add filters.txt
+            git add filters.txt add-domains.txt
             git commit -m "Update adblock filters"
             git push
           fi
