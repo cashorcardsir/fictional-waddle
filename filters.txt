@@ -1593,7 +1593,6 @@
 ||zzejvcepzzkv.com^
 ||zzjgigxgomlde.site^
 ||zzjvnnoprutlj.online^
-# BEGIN ADD-DOMAINS
 ||6tip.com^
 ||7hyy.com^
 ||agynarylanose.shop^
@@ -1632,4 +1631,3 @@
 ||vvhepvilma.info^
 ||wildgardencircle.com^
 ||xs2.shop^
-# END ADD-DOMAINS
