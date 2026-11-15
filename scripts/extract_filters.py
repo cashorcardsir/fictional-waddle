@@ -58,13 +58,17 @@ def fetch_text(url):
 
 
 def normalize_domain(value):
-    """Normalize a domain and remove a leading www. label."""
+    """Normalize a domain, strip a leading www., and reject bare TLDs."""
     if not isinstance(value, str):
         return None
 
     domain = value.strip().lower().rstrip(".")
     if domain.startswith("www."):
         domain = domain[4:]
+
+    # Reject single-label names like "mt" so TLDs are not treated as domains.
+    if "." not in domain:
+        return None
 
     if DOMAIN_PATTERN.fullmatch(domain):
         return domain
@@ -140,7 +144,7 @@ def clean_manual_domains(path):
     """
     Remove confirmed inactive entries from add-domains.txt.
     Preserve comments and entries with temporary DNS errors; return only
-    manually listed domains confirmed to have a DNS record.
+    manual domains confirmed to have a DNS record.
     """
     try:
         with open(path, "r", encoding="utf-8") as source:
@@ -184,10 +188,8 @@ def clean_manual_domains(path):
 
         if status is False:
             print(f"Removing inactive manual domain: {domain}")
-            # Remove the entire line, including any inline comment.
             continue
 
-        # Keep active entries and entries whose DNS status is uncertain.
         kept_lines.append(f"{domain}{comment_suffix}{newline}")
 
         if status is True:
@@ -347,11 +349,6 @@ active_automatic_targets = {
     if is_active is True
 }
 
-active_targets = active_automatic_targets | manual_targets
-
-# Always rewrite filters.txt, even if no active targets remain. This removes
-# previously listed domains that have now been confirmed inactive instead of
-# leaving stale entries behind. The manual markers are retained for next run.
 with open(FILTERS_FILE, "w", encoding="utf-8") as output:
     for domain in sorted(active_automatic_targets):
         output.write(f"||{domain}^\n")
