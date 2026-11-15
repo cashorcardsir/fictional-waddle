@@ -16,8 +16,6 @@ XOR_KEY = b"xR9tB2pL6q7MwVe"
 
 FILTERS_FILE = "filters.txt"
 ADD_DOMAINS_FILE = "add-domains.txt"
-MANUAL_START = "# BEGIN ADD-DOMAINS"
-MANUAL_END = "# END ADD-DOMAINS"
 
 DOMAIN_PATTERN = re.compile(
     r"(?=.{1,253}$)"
@@ -66,15 +64,12 @@ def normalize_domain(value):
     if domain.startswith("www."):
         domain = domain[4:]
 
-    # Reject single-label names like "mt" so TLDs are not treated as domains.
     if "." not in domain:
         return None
 
-    # Reject obviously malformed entries, including illegal characters.
     if not re.fullmatch(r"[a-z0-9.-]+", domain):
         return None
 
-    # Reject labels that start/end with '-' or are empty.
     labels = domain.split(".")
     if any(not label or label.startswith("-") or label.endswith("-") for label in labels):
         return None
@@ -86,24 +81,17 @@ def normalize_domain(value):
 
 
 def load_existing_targets(path):
-    """Load prior automatic entries, skipping the marked manual section."""
+    """Load previous automatic entries and ignore legacy marker lines."""
     targets = set()
-    in_manual_section = False
 
     try:
         with open(path, encoding="utf-8") as existing:
             for line in existing:
                 entry = line.strip()
 
-                if entry == MANUAL_START:
-                    in_manual_section = True
+                if entry.startswith("# BEGIN ADD-DOMAINS") or entry.startswith("# END ADD-DOMAINS"):
                     continue
-
-                if entry == MANUAL_END:
-                    in_manual_section = False
-                    continue
-
-                if in_manual_section or not entry or entry.startswith("#"):
+                if not entry or entry.startswith("#"):
                     continue
 
                 entry = entry.removeprefix("||").removesuffix("^").strip("/")
@@ -168,13 +156,10 @@ def clean_manual_domains(path):
         newline = "\n" if raw_line.endswith("\n") else ""
         line_body = raw_line.rstrip("\r\n")
 
-        # Keep blank lines and standalone comments unchanged.
         if not line_body.strip() or line_body.lstrip().startswith("#"):
             kept_lines.append(raw_line)
             continue
 
-        # Ignore inline comments when checking the domain, but retain them
-        # unless that domain is confirmed inactive.
         if "#" in line_body:
             entry_text, comment_text = line_body.split("#", 1)
             entry_text = entry_text.strip()
@@ -289,11 +274,10 @@ def extract_blocklist_domains(text):
     return domains
 
 
-# Check manual domains using DNS and remove confirmed inactive entries
-# from add-domains.txt.
+# Clean manual entries and keep only active ones from add-domains.txt
 manual_targets = clean_manual_domains(ADD_DOMAINS_FILE)
 
-# Load prior automatic entries, excluding the marked manual section.
+# Start from previously generated active entries and ignore any legacy marker block
 targets = load_existing_targets(FILTERS_FILE)
 
 # Fetch and decode the XOR-encoded JavaScript config.
@@ -316,7 +300,6 @@ if js_source:
             )
             config = json.loads(plaintext.decode("utf-8"))
 
-            # Collect domain fields only; ignore decoyDomainZones IP addresses.
             for field in ("adserverDomain", "decoyDomain", "cdnDomain"):
                 domain = normalize_domain(config.get(field))
                 if domain:
@@ -345,7 +328,7 @@ if blocklist_text:
     targets.update(extract_blocklist_domains(blocklist_text))
 
 # DNS-check every automatically sourced target. Manual domains have already
-# been DNS-checked, so they are excluded from this pass.
+# been DNS-checked and are excluded from this second pass.
 automatic_candidates = sorted(targets - manual_targets)
 
 with ThreadPoolExecutor(max_workers=20) as executor:
@@ -357,11 +340,9 @@ active_automatic_targets = {
     if is_active is True
 }
 
+# Final output: plain list only, no manual-domain marker block.
 with open(FILTERS_FILE, "w", encoding="utf-8") as output:
     for domain in sorted(active_automatic_targets):
         output.write(f"||{domain}^\n")
-
-    output.write(f"{MANUAL_START}\n")
     for domain in sorted(manual_targets):
         output.write(f"||{domain}^\n")
-    output.write(f"{MANUAL_END}\n")
