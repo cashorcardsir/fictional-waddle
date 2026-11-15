@@ -1,4 +1,5 @@
 import base64
+import ipaddress
 import json
 import re
 import time
@@ -55,6 +56,21 @@ def fetch_text(url):
     return None
 
 
+def normalize_ip(value):
+    """Return a canonical IPv4/IPv6 address, or None when value is not an IP."""
+    if not isinstance(value, str):
+        return None
+
+    candidate = value.strip()
+    if candidate.startswith("[") and candidate.endswith("]"):
+        candidate = candidate[1:-1]
+
+    try:
+        return str(ipaddress.ip_address(candidate))
+    except ValueError:
+        return None
+
+
 def normalize_domain(value):
     """Normalize a domain, strip a leading www., and reject bare TLDs."""
     if not isinstance(value, str):
@@ -88,9 +104,6 @@ def load_existing_targets(path):
         with open(path, encoding="utf-8") as existing:
             for line in existing:
                 entry = line.strip()
-
-                if entry.startswith("# BEGIN ADD-DOMAINS") or entry.startswith("# END ADD-DOMAINS"):
-                    continue
                 if not entry or entry.startswith("#"):
                     continue
 
@@ -139,9 +152,9 @@ def check_dns_records(domain):
 
 def clean_manual_domains(path):
     """
-    Remove confirmed inactive entries from add-domains.txt.
-    Preserve comments and entries with temporary DNS errors; return only
-    manual domains confirmed to have a DNS record.
+    Remove confirmed inactive or malformed entries from add-domains.txt.
+    Preserve comments and entries with temporary DNS errors. Valid IP literals
+    are retained and included without performing DNS record lookups.
     """
     try:
         with open(path, "r", encoding="utf-8") as source:
@@ -150,7 +163,7 @@ def clean_manual_domains(path):
         return set()
 
     kept_lines = []
-    active_domains = set()
+    active_targets = set()
 
     for raw_line in lines:
         newline = "\n" if raw_line.endswith("\n") else ""
@@ -172,9 +185,16 @@ def clean_manual_domains(path):
             kept_lines.append(raw_line)
             continue
 
+        # IP addresses are validated and retained without DNS queries.
+        ip_address = normalize_ip(entry_text)
+        if ip_address is not None:
+            kept_lines.append(f"{ip_address}{comment_suffix}{newline}")
+            active_targets.add(ip_address)
+            continue
+
         domain = normalize_domain(entry_text)
         if domain is None:
-            print(f"Removing malformed manual domain: {entry_text}")
+            print(f"Removing malformed manual target: {entry_text}")
             continue
 
         status = check_dns_records(domain)
@@ -186,12 +206,12 @@ def clean_manual_domains(path):
         kept_lines.append(f"{domain}{comment_suffix}{newline}")
 
         if status is True:
-            active_domains.add(domain)
+            active_targets.add(domain)
 
     with open(path, "w", encoding="utf-8") as output:
         output.writelines(kept_lines)
 
-    return active_domains
+    return active_targets
 
 
 def extract_domains_from_text(text):
@@ -274,13 +294,11 @@ def extract_blocklist_domains(text):
     return domains
 
 
-# Clean manual entries and keep only active ones from add-domains.txt
+# Clean manual entries. Domain names are DNS-checked; valid IP literals are
+# retained directly without DNS lookups.
 manual_targets = clean_manual_domains(ADD_DOMAINS_FILE)
-
-# Start from previously generated active entries and ignore any legacy marker block
 targets = load_existing_targets(FILTERS_FILE)
 
-# Fetch and decode the XOR-encoded JavaScript config.
 js_source = fetch_text(SOURCE_URL)
 if js_source:
     match = re.search(
@@ -308,7 +326,6 @@ if js_source:
         except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
             pass
 
-# Get Base64-encoded hostnames from the stream page.
 stream_source = fetch_text(STREAM_URL)
 if stream_source:
     try:
@@ -316,19 +333,15 @@ if stream_source:
     except Exception:
         pass
 
-# Add domains from tsd.txt and tsd_m.txt.
 try:
     targets.update(fetch_tsd_domains())
 except Exception:
     pass
 
-# Add domains from the blocklist.
 blocklist_text = fetch_text(BLOCKLIST_URL)
 if blocklist_text:
     targets.update(extract_blocklist_domains(blocklist_text))
 
-# DNS-check every automatically sourced target. Manual domains have already
-# been DNS-checked and are excluded from this second pass.
 automatic_candidates = sorted(targets - manual_targets)
 
 with ThreadPoolExecutor(max_workers=20) as executor:
@@ -340,9 +353,9 @@ active_automatic_targets = {
     if is_active is True
 }
 
-# Final output: plain list only, no manual-domain marker block.
+# Plain list output: include active automatic targets and validated manual
+# domains/IPs. Manual IP addresses have not been DNS-checked.
+active_targets = active_automatic_targets | manual_targets
 with open(FILTERS_FILE, "w", encoding="utf-8") as output:
-    for domain in sorted(active_automatic_targets):
-        output.write(f"||{domain}^\n")
-    for domain in sorted(manual_targets):
-        output.write(f"||{domain}^\n")
+    for target in sorted(active_targets):
+        output.write(f"||{target}^\n")
