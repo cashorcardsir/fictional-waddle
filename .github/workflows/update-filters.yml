@@ -11,17 +11,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Extract and deduplicate domains
         run: pip install dnspython && python3 scripts/extract_filters.py
 
       - name: Commit changes
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           if ! git diff --quiet -- filters.txt add-domains.txt; then
-            git pull origin main
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add filters.txt add-domains.txt
             git commit -m "Update adblock filters"
-            git push
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
