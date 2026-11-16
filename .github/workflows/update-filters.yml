@@ -15,10 +15,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch source page
-        env:
-          SOURCE_URL: "https://dlhd.st/stream/stream-51.php"
-        run: curl --fail --silent --show-error --location "$SOURCE_URL" -o page.html
+#      - name: Fetch source page
+#        env:
+#          SOURCE_URL: "https://dlhd.st/stream/stream-51.php"
+#        run: curl --fail --silent --show-error --location "$SOURCE_URL" -o page.html
 
       - name: Extract and deduplicate domains
         run: pip install dnspython && python3 scripts/extract_filters.py
