@@ -21,15 +21,37 @@ jobs:
       - name: Extract and deduplicate domains
         run: pip install dnspython && python3 scripts/extract_filters.py
 
-      - name: Commit changes
+      - name: Commit and push changes
+        shell: bash
         run: |
+          set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if ! git diff --quiet -- filters.txt add-domains.txt; then
-            git add filters.txt add-domains.txt
-            git commit -m "Update adblock filters"
+          if git diff --quiet -- filters.txt add-domains.txt; then
+            echo "No filter changes"
+            exit 0
+          fi
+
+          git add filters.txt add-domains.txt
+          git commit -m "Update adblock filters"
+
+          # Fetch and rebase onto the latest remote main before pushing.
+          git fetch origin main
+          git rebase origin/main
+
+          # Retry briefly if another workflow pushes between fetch and push.
+          for attempt in 1 2 3 4 5; do
+            if git push origin "HEAD:main"; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 5 ]; then
+              echo "Failed to push after 5 attempts" >&2
+              exit 1
+            fi
+
             git fetch origin main
             git rebase origin/main
-            git push origin "HEAD:main"
-          fi
+          done
