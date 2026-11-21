@@ -1515,10 +1515,7 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
-||trkcapybara1.org^
 ||trkcapybara10.org^
-||trkcapybara2.org^
-||trkcapybara3.org^
 ||trkcapybara4.org^
 ||trkcapybara5.org^
 ||trkcpbrbw01.org^
@@ -1820,7 +1817,6 @@
 ||xsbqppdpzhuuh.website^
 ||xscueumaijhmk.website^
 ||xsvtzgislrwlj.site^
-||xswayxfyi.com^
 ||xtnltaiulkhid.site^
 ||xtryfpwnkzmxa.site^
 ||xtxzcgnuvdwrg.site^
@@ -1860,6 +1856,7 @@
 ||yhaknyoqjenbl.website^
 ||yhgtgwewtwmka.site^
 ||yhhdxlmzwelwq.site^
+||yhkribbwbtepp.website^
 ||yhwadexncyozg.website^
 ||yhyumuoyahocw.website^
 ||yjakwxjgjdweg.site^
