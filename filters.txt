@@ -1605,7 +1605,9 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
+||trkcapybara1.org^
 ||trkcapybara10.org^
+||trkcapybara2.org^
 ||trkcapybara3.org^
 ||trkcapybara4.org^
 ||trkcapybara5.org^
@@ -1838,6 +1840,7 @@
 ||woteaszymanst.website^
 ||wpffvxgorbdbu.website^
 ||wpoikwoetyjrq.site^
+||wponeharjwnil.site^
 ||wprlnpiubanlc.online^
 ||wqecuoywtysai.online^
 ||wqgasujugxgoz.space^
