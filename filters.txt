@@ -739,6 +739,7 @@
 ||ithercswnkzdw.site^
 ||iuaxqqpzqkpvz.space^
 ||iucwyrvskyyvn.space^
+||iudlbapcyxrhp.website^
 ||iuizeepvkmqlt.site^
 ||iukscjnyfplhp.site^
 ||iunikbinqlwjp.website^
@@ -784,7 +785,6 @@
 ||jgdsonmfioxyf.online^
 ||jgwiaotrgeuoi.space^
 ||jgzccjmuydvvx.space^
-||jgzhmyaa.com^
 ||jhloeccwchpee.space^
 ||jhuqoqpfxpnay.site^
 ||jiglkxgen.com^
@@ -1605,9 +1605,7 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
-||trkcapybara1.org^
 ||trkcapybara10.org^
-||trkcapybara2.org^
 ||trkcapybara3.org^
 ||trkcapybara4.org^
 ||trkcapybara5.org^
