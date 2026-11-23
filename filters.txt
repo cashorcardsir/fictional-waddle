@@ -1179,6 +1179,7 @@
 ||mwbowrybfgbcx.space^
 ||mwnawoazqkejo.online^
 ||mwsgvnkhfrlah.space^
+||mwsmtyhvbdsbg.space^
 ||mwxigqjdsawol.website^
 ||mxirylhzpkbtw.space^
 ||mxyccryjagnoy.space^
@@ -1776,7 +1777,6 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
-||trkcapybara1.org^
 ||trkcapybara10.org^
 ||trkcapybara2.org^
 ||trkcapybara3.org^
@@ -1852,6 +1852,7 @@
 ||ulayieklcdyas.site^
 ||ulbvhbefihzzf.site^
 ||ulkwsxqatkgzq.site^
+||ulwvfhknqocnm.online^
 ||ulxmuuyqupmde.online^
 ||umaoyubtybuzq.site^
 ||umhhodwadqeo.com^
