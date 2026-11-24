@@ -616,6 +616,7 @@
 ||gilylqiazyyei.site^
 ||giriieucbglvi.website^
 ||gjhmictjgixhj.space^
+||gkretspkgsctm.online^
 ||gkwubmvlnrpnz.space^
 ||gldpkxwsmtfzv.online^
 ||glkompsqfeuoj.online^
@@ -1721,6 +1722,7 @@
 ||sxgbnjmbqacpw.space^
 ||sxzrwvidonkqe.space^
 ||syejhsxaag.com^
+||sykqfitqdiwbo.online^
 ||symlxpywzghrn.space^
 ||synyvfhkotldg.online^
 ||syophwynthyed.space^
@@ -1796,7 +1798,10 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
+||trkcapybara1.org^
 ||trkcapybara10.org^
+||trkcapybara2.org^
+||trkcapybara3.org^
 ||trkcapybara4.org^
 ||trkcapybara5.org^
 ||trkcpbrbw01.org^
