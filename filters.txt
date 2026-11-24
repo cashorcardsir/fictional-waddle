@@ -1527,6 +1527,7 @@
 ||rftseepsjwbdl.site^
 ||rfwcwtszauors.website^
 ||rfwhdtsxfcwtd.space^
+||rgcdcchqcmrka.space^
 ||rgefifgiyepcz.online^
 ||rggzaqizlixgs.space^
 ||rhdthcujhslgr.online^
@@ -1762,6 +1763,7 @@
 ||trkcapybara03.org^
 ||trkcapybara1.org^
 ||trkcapybara10.org^
+||trkcapybara2.org^
 ||trkcapybara3.org^
 ||trkcapybara4.org^
 ||trkcapybara5.org^
@@ -2306,3 +2308,4 @@
 ||zyvhofzjqlvwb.space^
 ||zzjgigxgomlde.site^
 ||zzjvnnoprutlj.online^
+||zzwugofxijrfm.space^
