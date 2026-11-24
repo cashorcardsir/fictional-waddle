@@ -916,6 +916,7 @@
 ||jwnzidarvaypg.online^
 ||jwueebywttzbl.website^
 ||jwutznbnhgmkg.online^
+||jxuwhxgwftoqv.site^
 ||jyhrkuolyeoqb.space^
 ||jyjauzdktmosl.online^
 ||jymqhypdvvbra.space^
@@ -1439,6 +1440,7 @@
 ||qbupzairypjtf.online^
 ||qbzaqdjkriqth.site^
 ||qbzdmkvtfjnkh.online^
+||qbzgfxak.com^
 ||qcglsbvudqtao.site^
 ||qcmoubaihyvbj.online^
 ||qczgzwbmvious.space^
@@ -1766,8 +1768,10 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
+||trkcapybara1.org^
 ||trkcapybara10.org^
 ||trkcapybara2.org^
+||trkcapybara3.org^
 ||trkcapybara4.org^
 ||trkcapybara5.org^
 ||trkcpbrbw01.org^
