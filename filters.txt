@@ -657,6 +657,7 @@
 ||hbaxgaeeefobq.site^
 ||hbbpuwchmy.com^
 ||hbibtkmqvicic.online^
+||hbwqdvazi.com^
 ||hclkrrnvxeztm.space^
 ||hcotvwpasqknw.space^
 ||hdfcwqwaqmnnn.website^
@@ -1358,7 +1359,6 @@
 ||pbkexxgndyysd.online^
 ||pbqtdprvlotta.online^
 ||pcaqedtlygwlt.website^
-||pcuhsvrytqd.com^
 ||pdeoebbbqpjdv.space^
 ||pdgifgpbfasrb.online^
 ||pdlhbgrqgjndo.site^
@@ -1763,10 +1763,7 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
-||trkcapybara1.org^
 ||trkcapybara10.org^
-||trkcapybara2.org^
-||trkcapybara3.org^
 ||trkcapybara4.org^
 ||trkcapybara5.org^
 ||trkcpbrbw01.org^
