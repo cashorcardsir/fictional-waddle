@@ -1757,6 +1757,7 @@
 ||trkcapybara03.org^
 ||trkcapybara1.org^
 ||trkcapybara10.org^
+||trkcapybara2.org^
 ||trkcapybara3.org^
 ||trkcapybara4.org^
 ||trkcapybara5.org^
