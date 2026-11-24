@@ -152,7 +152,6 @@
 ||bivekmpbxurgn.online^
 ||bjlyoraoznlxs.online^
 ||bjpgvtscpiohh.site^
-||bjzvinxduxltg.website^
 ||bkabbgtmedzoy.online^
 ||bltyxiybbdema.online^
 ||blyiwafrgbnfd.site^
@@ -395,8 +394,6 @@
 ||dvykhdiwkpjuq.online^
 ||dvzcfqpdoaxtr.website^
 ||dxaqcakgokcbe.online^
-||dxdwfgqtuegmy.website^
-||dxmjdtwhytzxb.space^
 ||dxxfhszhmacqm.online^
 ||dxynbmrkwrvbj.space^
 ||dxyxyrailduzp.space^
@@ -655,7 +652,6 @@
 ||gwbhpuwndhkot.site^
 ||gxfymazebhlln.site^
 ||gxmetfdcczlyz.site^
-||gxrdxtfsuksug.website^
 ||gxuntweapylyx.website^
 ||gxyzkmsksthas.website^
 ||gyhzfsekgvrud.online^
@@ -727,7 +723,6 @@
 ||hunneijvjgcqy.site^
 ||hupeenaeqgsye.site^
 ||hupoolibcerre.website^
-||hurupjtqpngdm.website^
 ||hvikwpunitktp.site^
 ||hviyvozcpwlki.website^
 ||hvnthkedlolem.site^
@@ -931,7 +926,6 @@
 ||jwegptdhydbhd.space^
 ||jwnbaokoenlru.space^
 ||jwnzidarvaypg.online^
-||jwueebywttzbl.website^
 ||jwutznbnhgmkg.online^
 ||jxuwhxgwftoqv.site^
 ||jyhrkuolyeoqb.space^
@@ -1080,7 +1074,6 @@
 ||llsofpbwwufml.online^
 ||lluebjiimznuz.site^
 ||llyjwpmbhzuwe.website^
-||lmifiblkmsjzr.space^
 ||lmouywaaussjy.website^
 ||lmqduqzuqzjbs.space^
 ||lmzvrkojtjxae.site^
@@ -1800,6 +1793,8 @@
 ||trkcapybara03.org^
 ||trkcapybara1.org^
 ||trkcapybara10.org^
+||trkcapybara2.org^
+||trkcapybara3.org^
 ||trkcapybara4.org^
 ||trkcapybara5.org^
 ||trkcpbrbw01.org^
@@ -1988,6 +1983,7 @@
 ||vqbrvsizdcxzv.space^
 ||vrhvyxbebusfn.space^
 ||vssfvwjkzfmut.space^
+||vsyvgvqylxxpk.site^
 ||vsyvkhtnuhqsr.space^
 ||vtktaxymfzkvt.space^
 ||vtpetzzcrakgq.space^
