@@ -1010,6 +1010,7 @@
 ||krpxzaxqykgwi.website^
 ||ksceuuupvjpes.space^
 ||ksmhmxnsvrrhv.site^
+||ksxkvyzhpiabi.space^
 ||ksyibwnigfijv.space^
 ||ktfneeluuporm.space^
 ||ktrbyvzcahpih.space^
@@ -1796,6 +1797,8 @@
 ||trkcapybara03.org^
 ||trkcapybara1.org^
 ||trkcapybara10.org^
+||trkcapybara2.org^
+||trkcapybara3.org^
 ||trkcapybara4.org^
 ||trkcapybara5.org^
 ||trkcpbrbw01.org^
