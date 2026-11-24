@@ -565,6 +565,7 @@
 ||fwvniroflozwd.website^
 ||fxdptwiqspttp.online^
 ||fxjmayxrazoyq.online^
+||fxmqrdjgbfqfl.space^
 ||fxpzspnmdyduo.online^
 ||fzadhejdrwtic.online^
 ||fzehebhsdrwrk.online^
@@ -1542,7 +1543,6 @@
 ||rinwcijqsjzci.online^
 ||risfbmwmhgnim.site^
 ||riymolmuythwx.online^
-||rjfxxciv.com^
 ||rjgfvejdujegg.site^
 ||rjugiebxhvtwe.space^
 ||rjzkpjycwcmuh.space^
@@ -1765,10 +1765,7 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
-||trkcapybara1.org^
 ||trkcapybara10.org^
-||trkcapybara2.org^
-||trkcapybara3.org^
 ||trkcapybara4.org^
 ||trkcapybara5.org^
 ||trkcpbrbw01.org^
