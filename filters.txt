@@ -1399,6 +1399,7 @@
 ||pbkexxgndyysd.online^
 ||pbqtdprvlotta.online^
 ||pcaqedtlygwlt.website^
+||pcaswessbhwxx.website^
 ||pdeoebbbqpjdv.space^
 ||pdgifgpbfasrb.online^
 ||pdlhbgrqgjndo.site^
@@ -1721,6 +1722,7 @@
 ||srmcychtzaeny.online^
 ||srqck1.com^
 ||srvhqcwtpzwyq.space^
+||srxewabqzmqxu.site^
 ||sslyqxezmsehc.website^
 ||ssppsciomwffd.website^
 ||stklvezvixdld.space^
@@ -1829,7 +1831,6 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
-||trkcapybara1.org^
 ||trkcapybara10.org^
 ||trkcapybara2.org^
 ||trkcapybara3.org^
