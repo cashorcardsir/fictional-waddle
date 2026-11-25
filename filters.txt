@@ -47,6 +47,7 @@
 ||aiwsdkxqizteg.online^
 ||aizaruzyzipdj.website^
 ||ajdcvrkvbwdrp.online^
+||ajdvgpfpyybwc.space^
 ||ajkpmapimhptz.site^
 ||akocpknfyhpme.website^
 ||akycldymoyxpd.online^
@@ -292,6 +293,7 @@
 ||cvzysdsrgupor.website^
 ||cwdbfkjlmiqst.online^
 ||cwkdxrcyptcfc.site^
+||cwlgvlyxtupge.site^
 ||cwsxeyiooubjg.space^
 ||cwtihirfcakbp.site^
 ||cxkgykxlbavds.space^
@@ -1831,7 +1833,6 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
-||trkcapybara1.org^
 ||trkcapybara10.org^
 ||trkcapybara2.org^
 ||trkcapybara3.org^
