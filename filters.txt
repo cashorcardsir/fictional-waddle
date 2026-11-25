@@ -1852,7 +1852,6 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
-||trkcapybara1.org^
 ||trkcapybara10.org^
 ||trkcapybara2.org^
 ||trkcapybara3.org^
@@ -1997,6 +1996,7 @@
 ||vawbpazgcyqhr.website^
 ||vazijiavfyebf.site^
 ||vbanmbaiangox.online^
+||vblifvibpdrrd.space^
 ||vbrwcskfihyeg.site^
 ||vbsrpojnzuktp.online^
 ||vbxsxpqqjoyae.site^
@@ -2397,6 +2397,7 @@
 ||zrcbckthwcsox.online^
 ||zrdezllgdthjb.site^
 ||zrothrmvjxxiq.site^
+||zrqbyjixyvlvo.space^
 ||zrsgpdgtnhkez.space^
 ||zrshcirokjuur.online^
 ||zsfaelvpinhpa.site^
