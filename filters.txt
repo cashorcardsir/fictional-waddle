@@ -770,6 +770,7 @@
 ||hykrgpxkuhgnm.site^
 ||hymmrhjrbtvqa.website^
 ||hyostotqriagm.site^
+||hypbgxfmlelgi.website^
 ||hyxtspnafwoxv.site^
 ||hzfgijqudwngz.online^
 ||hzjllxntogipq.online^
@@ -1887,7 +1888,6 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
-||trkcapybara1.org^
 ||trkcapybara10.org^
 ||trkcapybara2.org^
 ||trkcapybara3.org^
