@@ -1830,8 +1830,10 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
+||trkcapybara1.org^
 ||trkcapybara10.org^
 ||trkcapybara2.org^
+||trkcapybara3.org^
 ||trkcapybara4.org^
 ||trkcapybara5.org^
 ||trkcpbrbw01.org^
@@ -1881,6 +1883,7 @@
 ||udxbyiawbxrnp.space^
 ||ueavzmpxbrtgt.site^
 ||ueepclyhmpycf.website^
+||uezvxvkdkytwz.online^
 ||ufauolqhhcpmd.space^
 ||uffpoomcsktub.site^
 ||ufhwghrdkqdvs.online^
