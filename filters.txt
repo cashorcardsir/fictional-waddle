@@ -1915,7 +1915,6 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
-||trkcapybara1.org^
 ||trkcapybara10.org^
 ||trkcapybara2.org^
 ||trkcapybara3.org^
@@ -2009,6 +2008,7 @@
 ||uojybigasgycc.site^
 ||upaywxkviolqn.online^
 ||uphufwudbxxhq.website^
+||upuolzwzkoxbu.online^
 ||uqaymrtomzmfm.site^
 ||uqgfogmaelnvl.online^
 ||uqsbqklhkdyuf.website^
@@ -2129,6 +2129,7 @@
 ||vvjffwrzebnic.website^
 ||vvqpgzbwrzsuh.space^
 ||vwoucecfjxmuj.website^
+||vwxfpjjcbpsmw.space^
 ||vxflocowtxztw.site^
 ||vxnurbodyeces.space^
 ||vxnvskrzuwmpo.online^
