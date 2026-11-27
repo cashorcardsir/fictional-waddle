@@ -1552,6 +1552,7 @@
 ||pocxnvchjggmx.online^
 ||poqsrzievvwqy.site^
 ||ppautngfonjao.website^
+||ppusrayzlcmnr.site^
 ||ppztwwumvoocs.space^
 ||pqdwbymweutou.space^
 ||pqorwwnymucaj.online^
@@ -1954,7 +1955,6 @@
 ||trkcapybara01.org^
 ||trkcapybara02.org^
 ||trkcapybara03.org^
-||trkcapybara1.org^
 ||trkcapybara10.org^
 ||trkcapybara2.org^
 ||trkcapybara3.org^
