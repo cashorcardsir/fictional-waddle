@@ -815,7 +815,6 @@
 ||hznqeqcxqbanh.website^
 ||hzqyculacmrpi.site^
 ||hzvlnrfnndonf.site^
-||iaburdjxqnwoq.com^
 ||iaoonfojwtujn.online^
 ||iatnhdrzpqrwv.online^
 ||iavszerhxigkh.space^
@@ -1114,6 +1113,7 @@
 ||kvjthavimymgk.online^
 ||kvnygdvpnbflo.website^
 ||kvskvclkziqne.online^
+||kvyblkzkbesan.online^
 ||kvzoohgcmwppc.space^
 ||kwobfbdlsyifq.space^
 ||kwrxjobcqfnne.website^
@@ -1614,6 +1614,7 @@
 ||qlihcdthteggq.site^
 ||qloddgoeaqgre.space^
 ||qlpvssymowjat.site^
+||qlwyflpjlqbpa.site^
 ||qobpndboehbrn.online^
 ||qoerhsebttsgn.com^
 ||qompeoajm.com^
